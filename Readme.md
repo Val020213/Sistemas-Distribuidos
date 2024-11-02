@@ -156,4 +156,12 @@ Este lo veo bueno también esta fácil
 No
 
 #### Proyectos:
+
 - https://github.com/human-toilet/Sistemas-Distribuidos
+
+## Preferencia:
+
+- Tag Based File System
+- Searcher
+- Spotify
+- Scrapper
