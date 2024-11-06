@@ -1,31 +1,56 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"log"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-const portNum string = ":8080"
-
-func getHome(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Homepage")
+func getHome(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, nil)
 }
 
-func getInfo(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Info page")
+// fetchHTTP fetches the content of the URL passed as a query parameter
+// example : http://127.0.0.1:8080/fetch?url=https://example.com
+func fetchHTTP(c *gin.Context) {
+
+	url := c.Query("url")
+
+	log.Println("Fetching URL: ", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  err.Error(),
+			"detail": "Failed to fetch the URL",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  err.Error(),
+			"detail": "Failed to read the response body",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"body": string(body),
+	})
 }
 
 func main() {
-	log.Println("Starting http server")
 
-	http.HandleFunc("/", getHome)
-	http.HandleFunc("/info", getInfo)
+	router := gin.Default()
 
-	log.Println("Started on port", portNum)
+	router.GET("/fetch", fetchHTTP)
+	router.GET("/", getHome)
 
-	err := http.ListenAndServe(portNum, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	router.Run("127.0.0.1:8080")
+
 }
