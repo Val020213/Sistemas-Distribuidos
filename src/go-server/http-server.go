@@ -20,19 +20,9 @@ func fetchHTTP(c *gin.Context) {
 	log.Println("Fetching URL: ", url)
 
 	var w Worker
-	body, err := w.Request(url)
+	request := w.Request(url)
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  err.Error(),
-			"detail": "Failed to fetch the URL",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"body": body,
-	})
+	c.JSON(request.httpStatus, request.body)
 }
 
 func main() {
