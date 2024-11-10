@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"net/http"
 
@@ -20,7 +19,9 @@ func fetchHTTP(c *gin.Context) {
 
 	log.Println("Fetching URL: ", url)
 
-	resp, err := http.Get(url)
+	var w Worker
+	body, err := w.Request(url)
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  err.Error(),
@@ -28,19 +29,9 @@ func fetchHTTP(c *gin.Context) {
 		})
 		return
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  err.Error(),
-			"detail": "Failed to read the response body",
-		})
-		return
-	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"body": string(body),
+		"body": body,
 	})
 }
 
