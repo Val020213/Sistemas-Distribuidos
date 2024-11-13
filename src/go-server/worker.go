@@ -5,15 +5,13 @@ import (
 	"log"
 	"net/http"
 	"sync"
-
-	"github.com/gin-gonic/gin"
 )
 
 type Worker struct {
 	mu sync.Mutex
 }
 
-func (w *Worker) Request(url string) RequestStatus {
+func (w *Worker) Request(url string) WebPage {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -21,31 +19,27 @@ func (w *Worker) Request(url string) RequestStatus {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return RequestStatus{
-			http.StatusBadRequest,
-			gin.H{
-				"error":  err.Error(),
-				"detail": "Failed to fetch the URL",
-			},
+		return WebPage{
+			URL:     url,
+			Status:  "failed",
+			Content: err.Error(),
 		}
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return RequestStatus{
-			http.StatusConflict,
-			gin.H{
-				"error":  err.Error(),
-				"detail": "Failed to read the response body",
-			},
+		return WebPage{
+			URL:     url,
+			Status:  "failed",
+			Content: err.Error(),
 		}
 	}
 
-	return RequestStatus{
-		http.StatusOK,
-		gin.H{
-			"body": string(body),
-		},
+	return WebPage{
+		URL:     url,
+		Status:  "success",
+		Content: string(body),
 	}
+
 }

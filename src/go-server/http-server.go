@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var dbClient *mongo.Client
 
 func getHome(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, nil)
@@ -19,13 +23,21 @@ func fetchHTTP(c *gin.Context) {
 
 	log.Println("Fetching URL: ", url)
 
-	var w Worker
-	request := w.Request(url)
+	request := AddNewURL(dbClient, url)
 
 	c.JSON(request.httpStatus, request.body)
 }
 
 func main() {
+
+	dbClient = InitClient()
+
+	defer func() {
+		if err := dbClient.Disconnect(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Connection to MongoDB closed.")
+	}()
 
 	router := gin.Default()
 
