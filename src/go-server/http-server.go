@@ -7,9 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
 )
 
 var dbClient *mongo.Client
+var dbBucket *gridfs.Bucket
 
 func getHome(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, nil)
@@ -23,14 +25,14 @@ func fetchHTTP(c *gin.Context) {
 
 	log.Println("Fetching URL: ", url)
 
-	request := AddNewURL(dbClient, url)
+	request := AddNewURL(dbClient, dbBucket, url)
 
 	c.JSON(request.httpStatus, request.body)
 }
 
 func main() {
 
-	dbClient = InitClient()
+	dbClient, dbBucket = InitClient()
 
 	defer func() {
 		if err := dbClient.Disconnect(context.Background()); err != nil {

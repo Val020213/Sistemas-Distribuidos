@@ -10,7 +10,6 @@ type RequestStatus struct {
 }
 
 type WebPage struct {
-	URL     string `json:"url" bson:"url"`
-	Status  string `json:"status" bson:"status"`
-	Content string `json:"content" bson:"content"`
+	URL    string `json:"url" bson:"url"`
+	Status string `json:"status" bson:"status"`
 }
