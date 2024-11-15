@@ -17,9 +17,9 @@ func getHome(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, nil)
 }
 
-// fetchHTTP fetches the content of the URL passed as a query parameter
+// fetchURL fetches the content of the URL passed as a query parameter
 // example : http://127.0.0.1:8080/fetch?url=https://example.com
-func fetchHTTP(c *gin.Context) {
+func fetchURL(c *gin.Context) {
 
 	url := c.Query("url")
 
@@ -28,6 +28,22 @@ func fetchHTTP(c *gin.Context) {
 	request := AddNewURL(dbClient, dbBucket, url)
 
 	c.JSON(request.httpStatus, request.body)
+}
+
+func downloadURL(c *gin.Context) {
+
+	url := c.Query("url")
+
+	log.Println("Downloading URL: ", url)
+
+	content, err := GetHTML(dbClient, dbBucket, url)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Data(http.StatusOK, "text/html", content.Bytes())
 }
 
 func main() {
@@ -43,7 +59,8 @@ func main() {
 
 	router := gin.Default()
 
-	router.GET("/fetch", fetchHTTP)
+	router.GET("/fetch", fetchURL)
+	router.GET("/download", downloadURL)
 	router.GET("/", getHome)
 
 	router.Run("127.0.0.1:8080")
