@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"log"
 	"net/http"
@@ -11,35 +12,24 @@ type Worker struct {
 	mu sync.Mutex
 }
 
-func (w *Worker) Request(url string) WebPage {
+func (w *Worker) Request(url string) (bytes.Buffer, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	var htmlContent bytes.Buffer
 
 	log.Println("Fetching URL: ", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return WebPage{
-			URL:     url,
-			Status:  "failed",
-			Content: err.Error(),
-		}
+		return htmlContent, err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	_, err = io.Copy(&htmlContent, resp.Body)
 	if err != nil {
-		return WebPage{
-			URL:     url,
-			Status:  "failed",
-			Content: err.Error(),
-		}
+		return htmlContent, err
 	}
 
-	return WebPage{
-		URL:     url,
-		Status:  "success",
-		Content: string(body),
-	}
-
+	return htmlContent, nil
 }
