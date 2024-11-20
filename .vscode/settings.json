@@ -1,0 +1,9 @@
+{
+    "cSpell.words": [
+        "toolpad"
+    ],
+    "editor.formatOnType": true,
+    "[commonlisp]": {
+        "editor.wordSeparators": "`|;:'\",()"
+    }
+}
