@@ -63,6 +63,5 @@ func main() {
 	router.GET("/download", downloadURL)
 	router.GET("/", getHome)
 
-	router.Run("127.0.0.1:8080")
-
+	router.Run("localhost:8080")
 }
