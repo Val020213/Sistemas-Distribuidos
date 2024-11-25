@@ -4,9 +4,23 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "next:lint": "next lint",
+    "build": "next build",
+    "lint": "next lint",
+    "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
+    "rm:all": "rm -rf node_modules .next out dist build",
+    "re:start": "npm run rm:all && npm run install && npm run dev",
+    "re:build": "npm run rm:all && npm run install && npm run build",
+    "re:build-npm": "npm run rm:all && npm install && npm run build",
+    "dev:ts": "npm run dev & npm run ts:watch",
+    "tsc": "tsc",
+    "ts:watch": "npm run ts --watch",
+    "commit": "git-cz",
+    "commitlint": "commitlint --edit",
+    "postinstall": "husky install",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
@@ -34,10 +48,22 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "commitizen": "^4.3.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.2",
+    "husky": "^9.1.7",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
   }
 }
