@@ -22,11 +22,11 @@ func fetchURL(c *gin.Context) {
 	c.JSON(request.httpStatus, request.body)
 }
 
-func getState(c *gin.Context) {
+func getStates(c *gin.Context) {
 
 	log.Println("Fetching URL states")
 
-	request := GetSates()
+	request := GetStates()
 
 	c.JSON(request.httpStatus, request.body)
 }
@@ -52,7 +52,7 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/fetch", fetchURL)
-	router.GET("/state")
+	router.GET("/state", getStates)
 	router.GET("/download", downloadURL)
 	router.GET("/", getHome)
 
