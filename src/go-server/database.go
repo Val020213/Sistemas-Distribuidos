@@ -13,6 +13,11 @@ var Scrapped map[string]bytes.Buffer //Add mutex
 var Status map[string]string         //Add mutex
 var myWorker *Worker
 
+func Init() {
+	Scrapped = make(map[string]bytes.Buffer)
+	Status = make(map[string]string)
+}
+
 func AddNewURL(url string) RequestStatus {
 
 	_, exists := Status[url]

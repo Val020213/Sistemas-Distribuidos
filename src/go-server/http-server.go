@@ -49,6 +49,7 @@ func downloadURL(c *gin.Context) {
 
 func main() {
 
+	Init()
 	router := gin.Default()
 
 	router.GET("/fetch", fetchURL)
