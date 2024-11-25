@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +15,7 @@ var myWorker *Worker
 func Init() {
 	Scrapped = make(map[string]bytes.Buffer)
 	Status = make(map[string]string)
+	myWorker = &Worker{}
 }
 
 func AddNewURL(url string) RequestStatus {
@@ -69,7 +69,9 @@ func WorkerCall(url string) {
 
 	htmlContent, err := myWorker.Request(url)
 	if err != nil {
-		log.Fatal(err)
+		Scrapped[url] = htmlContent
+		Status[url] = "error"
+		return
 	}
 
 	Scrapped[url] = htmlContent
