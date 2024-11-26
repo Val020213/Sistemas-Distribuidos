@@ -1,31 +1,32 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/gridfs"
 )
-
-var dbClient *mongo.Client
-var dbBucket *gridfs.Bucket
 
 func getHome(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, nil)
 }
 
-// fetchURL fetches the content of the URL passed as a query parameter
-// example : http://127.0.0.1:8080/fetch?url=https://example.com
 func fetchURL(c *gin.Context) {
 
 	url := c.Query("url")
 
 	log.Println("Fetching URL: ", url)
 
-	request := AddNewURL(dbClient, dbBucket, url)
+	request := AddNewURL(url)
+
+	c.JSON(request.httpStatus, request.body)
+}
+
+func getStates(c *gin.Context) {
+
+	log.Println("Fetching URL states")
+
+	request := GetStates()
 
 	c.JSON(request.httpStatus, request.body)
 }
@@ -36,7 +37,7 @@ func downloadURL(c *gin.Context) {
 
 	log.Println("Downloading URL: ", url)
 
-	content, err := GetHTML(dbClient, dbBucket, url)
+	content, err := GetHTML(url)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -48,21 +49,13 @@ func downloadURL(c *gin.Context) {
 
 func main() {
 
-	dbClient, dbBucket = InitClient()
-
-	defer func() {
-		if err := dbClient.Disconnect(context.Background()); err != nil {
-			log.Fatal(err)
-		}
-		log.Println("Connection to MongoDB closed.")
-	}()
-
+	Init()
 	router := gin.Default()
 
 	router.GET("/fetch", fetchURL)
+	router.GET("/state", getStates)
 	router.GET("/download", downloadURL)
 	router.GET("/", getHome)
 
-	router.Run("127.0.0.1:8080")
-
+	router.Run("localhost:8080")
 }

@@ -2,70 +2,36 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/gridfs"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var dbName = "Scrapper"
-var bucketName = "HTMLs"
+var Scrapped map[string]bytes.Buffer //Add mutex
+var Status map[string]string         //Add mutex
+var myWorker *Worker
 
-func ConnectDB() (*mongo.Client, *gridfs.Bucket) {
-	// Set client options
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-
-	// Connect to MongoDB
-	client, err := mongo.Connect(context.TODO(), clientOptions)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Check the connection
-	err = client.Ping(context.TODO(), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create bucket
-	bucket, err := gridfs.NewBucket(
-		client.Database(bucketName),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("Connected to MongoDB!")
-
-	return client, bucket
+func Init() {
+	Scrapped = make(map[string]bytes.Buffer)
+	Status = make(map[string]string)
+	myWorker = &Worker{}
 }
 
-func InitClient() (*mongo.Client, *gridfs.Bucket) {
-	return ConnectDB()
-}
+func AddNewURL(url string) RequestStatus {
 
-func AddNewURL(client *mongo.Client, bucket *gridfs.Bucket, url string) RequestStatus {
-	collection := client.Database(dbName).Collection("URLs")
+	_, exists := Status[url]
 
-	webPage := WebPage{
-		URL:    url,
-		Status: "pending",
-	}
-
-	_, err := collection.InsertOne(context.TODO(), webPage)
-	if err != nil {
+	if exists {
 		return RequestStatus{
-			http.StatusInternalServerError,
-			gin.H{"error": err.Error()},
+			http.StatusBadRequest,
+			gin.H{"error": "URL already in system"},
 		}
 	}
+
+	Status[url] = "pending"
+
+	go WorkerCall(url)
 
 	return RequestStatus{
 		http.StatusOK,
@@ -73,53 +39,41 @@ func AddNewURL(client *mongo.Client, bucket *gridfs.Bucket, url string) RequestS
 	}
 }
 
-func GetHTML(client *mongo.Client, bucket *gridfs.Bucket, url string) (bytes.Buffer, error) {
+func GetStates() RequestStatus {
 
-	var htmlContent bytes.Buffer
-
-	downloadStream, err := bucket.OpenDownloadStreamByName(fmt.Sprintf("%s.html", url))
-	if err != nil {
-		return htmlContent, err
+	return RequestStatus{
+		http.StatusOK,
+		gin.H{"body": Status},
 	}
-	defer downloadStream.Close()
 
-	_, err = io.Copy(&htmlContent, downloadStream)
-	if err != nil {
-		return htmlContent, err
+}
+
+type HTMLError string
+
+func (e HTMLError) Error() string {
+	return fmt.Sprintf("The following url %s is not ready", string(e))
+}
+
+func GetHTML(url string) (bytes.Buffer, error) {
+
+	htmlContent, exists := Scrapped[url]
+
+	if !exists {
+		return htmlContent, HTMLError(url)
 	}
 
 	return htmlContent, nil
 }
 
-func WorkerCall(client *mongo.Client, bucket *gridfs.Bucket, url string) {
-	var worker Worker
+func WorkerCall(url string) {
 
-	htmlContent, err := worker.Request(url)
+	htmlContent, err := myWorker.Request(url)
 	if err != nil {
-		log.Fatal(err)
+		Scrapped[url] = htmlContent
+		Status[url] = "error"
+		return
 	}
 
-	uploadStream, err := bucket.OpenUploadStream(fmt.Sprintf("%s.html", url))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer uploadStream.Close()
-
-	_, err = uploadStream.Write(htmlContent.Bytes())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Change Status
-	filter := bson.M{"url": url}
-	update := bson.M{"$set": bson.M{"status": "scrapped"}}
-
-	result, err := client.Database(dbName).Collection("URLs").UpdateOne(context.TODO(), filter, update)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if result.MatchedCount == 0 {
-		log.Fatal("No documents matched the filter")
-	}
+	Scrapped[url] = htmlContent
+	Status[url] = "finish"
 }
