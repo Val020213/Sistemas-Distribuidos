@@ -9,4 +9,10 @@ export const clientRoutes = {
   },
 }
 
-export const backendRoutes = {}
+export const backendRoutes = {
+  fetch: `${process.env.NEXT_PUBLIC_API_URL}/fetch`,
+}
+
+export const tagsRoutes = {
+  fetch: 'fetchUrlService',
+}

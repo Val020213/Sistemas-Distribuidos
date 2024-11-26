@@ -52,7 +52,7 @@ const HackerDialog = ({ title, actions, children, ...others }: Props) => {
           alignItems={'center'}
           justifyContent={'space-between'}
         >
-          <Typography component={'h6'} fontSize={'0.825rem'}>
+          <Typography component={'h6'} fontSize={'1rem'}>
             {title}
           </Typography>
           <IconButton disableRipple>

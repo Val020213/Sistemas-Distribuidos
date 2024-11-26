@@ -2,7 +2,7 @@
 
 import { GlobalContext } from '@/core/global-context/GlobalContext'
 import { ReactNode, useContext, useEffect } from 'react'
-import AuthenticationModal from './modal/AutenticationModal'
+// import AuthenticationModal from './modal/AutenticationModal'
 import { getUserData } from '@/lib/cookies'
 import useShowHackerMessage from '@/hooks/useShowHackerMessage'
 
@@ -66,7 +66,10 @@ const HackerProtect = ({ children }: { children: ReactNode }) => {
 
   return (
     <>
-      {!globalContext.user[0]?.token.length && <AuthenticationModal />}
+      {/* {!globalContext.user[0]?.token.length && <AuthenticationModal />} */}{' '}
+      {
+        // Commented out to avoid showing the modal
+      }
       {children}
     </>
   )

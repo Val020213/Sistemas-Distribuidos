@@ -44,8 +44,7 @@ const InputWithLabel = ({
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {label && (
           <Typography
-            fontWeight={500}
-            fontSize={'0.625rem'}
+            fontSize={'0.825rem'}
             noWrap
             color={
               Boolean(errorAlert)
