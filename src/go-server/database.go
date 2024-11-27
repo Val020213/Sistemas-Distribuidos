@@ -8,13 +8,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type URLStatus string
+
+const (
+	PendingStatus  URLStatus = "pending"
+	ErrorStatus    URLStatus = "error"
+	ScrappedStatus URLStatus = "scrapped"
+)
+
 var Scrapped map[string]bytes.Buffer //Add mutex
-var Status map[string]string         //Add mutex
+var Status map[string]URLStatus      //Add mutex
 var myWorker *Worker
 
 func Init() {
 	Scrapped = make(map[string]bytes.Buffer)
-	Status = make(map[string]string)
+	Status = make(map[string]URLStatus)
 	myWorker = &Worker{}
 }
 
@@ -29,7 +37,7 @@ func AddNewURL(url string) RequestStatus {
 		}
 	}
 
-	Status[url] = "pending"
+	Status[url] = PendingStatus
 
 	go WorkerCall(url)
 
@@ -39,7 +47,7 @@ func AddNewURL(url string) RequestStatus {
 	}
 }
 
-func GetStates() RequestStatus {
+func listUrlStates() RequestStatus {
 
 	return RequestStatus{
 		http.StatusOK,
@@ -70,10 +78,10 @@ func WorkerCall(url string) {
 	htmlContent, err := myWorker.Request(url)
 	if err != nil {
 		Scrapped[url] = htmlContent
-		Status[url] = "error"
+		Status[url] = ErrorStatus
 		return
 	}
 
 	Scrapped[url] = htmlContent
-	Status[url] = "finish"
+	Status[url] = ScrappedStatus
 }

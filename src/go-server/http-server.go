@@ -4,8 +4,18 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+func buildApiResponse(statusCode int, status string, message string, data interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"statusCode": statusCode,
+		"status":     status,
+		"message":    message,
+		"data":       data,
+	}
+}
 
 func getHome(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, nil)
@@ -19,16 +29,29 @@ func fetchURL(c *gin.Context) {
 
 	request := AddNewURL(url)
 
-	c.JSON(request.httpStatus, request.body)
+	if request.httpStatus != http.StatusOK {
+		errorMessage, _ := request.body["error"].(string)
+		c.JSON(request.httpStatus, buildApiResponse(request.httpStatus, "error", errorMessage, nil))
+		return
+	}
+
+	c.JSON(request.httpStatus, buildApiResponse(request.httpStatus, "success", "URL fetched successfully", request.body))
 }
 
-func getStates(c *gin.Context) {
+func getUrlStates(c *gin.Context) {
 
 	log.Println("Fetching URL states")
 
-	request := GetStates()
+	request := listUrlStates()
 
-	c.JSON(request.httpStatus, request.body)
+	if request.httpStatus != http.StatusOK {
+		errorMessage, _ := request.body["error"].(string)
+		c.JSON(request.httpStatus, buildApiResponse(request.httpStatus, "error", errorMessage, nil))
+		return
+	}
+
+	c.JSON(request.httpStatus, buildApiResponse(request.httpStatus, "success", "URL states fetched successfully", request.body))
+
 }
 
 func downloadURL(c *gin.Context) {
@@ -52,8 +75,10 @@ func main() {
 	Init()
 	router := gin.Default()
 
+	router.Use(cors.Default())
+
 	router.GET("/fetch", fetchURL)
-	router.GET("/state", getStates)
+	router.GET("/state", getUrlStates)
 	router.GET("/download", downloadURL)
 	router.GET("/", getHome)
 

@@ -21,12 +21,11 @@ const AddUrlFormContainer = () => {
   async function onSubmit(data: addUrlSchemaType) {
     try {
       const response = await fetchUrlService(data.url)
-      console.log(response)
-      if (response.status === 200) {
+      if (response.statusCode === 200) {
         hackerMessage('Url agregada correctamente', 'success')
         navigate.back()
       } else {
-        hackerMessage('Error al agregar la url', 'error')
+        hackerMessage(response.message, 'error')
       }
     } catch (error: unknown) {
       console.log(error)
