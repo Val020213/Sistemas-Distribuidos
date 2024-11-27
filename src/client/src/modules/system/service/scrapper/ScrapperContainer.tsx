@@ -9,15 +9,33 @@ import { GridColDef } from '@mui/x-data-grid'
 import { HackerButton } from '@/core/button/HackerButton'
 import Link from 'next/link'
 import AddUrl from './add-url/AddUrl'
-import { SearchParams } from 'next/dist/server/request/search-params'
+import { downloadUrlService } from '@/services/url-service'
+import { useState } from 'react'
 
 type Props = {
   data: UrlDataType[]
-  searchParams?: SearchParams
 }
 
-export const ScrapperContainer = ({ data, searchParams }: Props) => {
+export const ScrapperContainer = ({ data }: Props) => {
   const hackerMessages = useShowHackerMessage()
+
+  async function handleDownload(id: string) {
+    const response = await downloadUrlService(id)
+
+    if (response) {
+      const url = window.URL.createObjectURL(new Blob([response]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${id}.html`)
+      document.body.appendChild(link)
+      link.click()
+      hackerMessages('Descargando archivo', 'success')
+      return
+    }
+
+    hackerMessages('Error al descargar archivo', 'error')
+  }
+
   const columns: GridColDef<UrlDataType>[] = [
     {
       field: 'id',
@@ -60,16 +78,15 @@ export const ScrapperContainer = ({ data, searchParams }: Props) => {
       renderCell: (params) => {
         return (
           <ActionsButtons
-            onDownload={() =>
-              hackerMessages(
-                `Trying to download file with id ${params.id}...\n> Error: this functionality is in progress`
-              )
-            }
+            disabled={params.row.status !== 'scrapped'}
+            onDownload={() => handleDownload(params.row.url)}
           />
         )
       },
     },
   ]
+
+  const [openModal, setOpenModal] = useState<string>('')
 
   return (
     <Stack spacing={4} sx={{ maxWidth: 'md', width: '100%' }}>
@@ -85,21 +102,21 @@ export const ScrapperContainer = ({ data, searchParams }: Props) => {
             &lt; Ir al Sistema
           </HackerButton>
         </Link>
-        <Link href={'?currentModal=addUrl'}>
-          <HackerButton
-            variant="Button"
-            color="green"
-            sx={{
-              width: '168px',
-            }}
-          >
-            + Agregar URL
-          </HackerButton>
-        </Link>
+
+        <HackerButton
+          variant="Button"
+          color="green"
+          sx={{
+            width: '168px',
+          }}
+          onClick={() => setOpenModal('addUrl')}
+        >
+          + Agregar URL
+        </HackerButton>
       </Stack>
       <HackerDataGrid columns={columns} data={data} />
       <Box height={8} />
-      <AddUrl currentModal={searchParams?.currentModal as string} />
+      <AddUrl currentModal={openModal} onClose={() => setOpenModal('')} />
     </Stack>
   )
 }

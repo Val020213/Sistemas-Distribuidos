@@ -22,8 +22,17 @@ export async function listUrlService(): Promise<
     method: 'GET',
     next: {
       tags: [tagsRoutes.list],
+      revalidate: 1,
     },
   })
-  console.log(response)
   return response.json()
+}
+export async function downloadUrlService(id: string): Promise<string> {
+  const response = await fetch(`${backendRoutes.download}?id=${id}`, {
+    method: 'GET',
+    next: {
+      tags: [tagsRoutes.download],
+    },
+  })
+  return response.text()
 }

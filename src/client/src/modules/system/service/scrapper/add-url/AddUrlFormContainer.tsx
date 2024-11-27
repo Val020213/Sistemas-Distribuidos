@@ -4,14 +4,12 @@ import addUrlSchema, { addUrlSchemaType } from './addUrlSchema'
 import { FormProvider } from '@/core/form/form-provider'
 import AddUrlForm from './AddUrlForm'
 import useShowHackerMessage from '@/hooks/useShowHackerMessage'
-import { useRouter } from 'next/navigation'
 import { fetchUrlService } from '@/services/url-service'
 import { tagsRoutes } from '@/routes/routes'
 import { revalidateServerTags } from '@/routes/cache'
 
-const AddUrlFormContainer = () => {
+const AddUrlFormContainer = ({ onClose }: { onClose: () => void }) => {
   const hackerMessage = useShowHackerMessage()
-  const navigate = useRouter()
   const methods = useForm<addUrlSchemaType>({
     resolver: zodResolver(addUrlSchema),
     defaultValues: {
@@ -25,8 +23,8 @@ const AddUrlFormContainer = () => {
       const response = await fetchUrlService(data.url)
       if (response.statusCode === 200) {
         hackerMessage('Url agregada correctamente', 'success')
-        revalidateServerTags(tagsRoutes.list)
-        navigate.back()
+        await revalidateServerTags(tagsRoutes.list)
+        onClose()
       } else {
         hackerMessage(response.message, 'error')
       }
@@ -34,9 +32,6 @@ const AddUrlFormContainer = () => {
       console.log(error)
       hackerMessage(`Error al agregar la url ${error}`, 'error')
     }
-  }
-  function onClose() {
-    navigate.back()
   }
 
   return (

@@ -14,7 +14,7 @@ import {
 import { X } from 'lucide-react'
 import { ReactNode } from 'react'
 
-type Props = ModalProps & {
+type Props = Omit<ModalProps, 'onClose'> & {
   title: string
   actions?: ReactNode
   width?:
@@ -26,9 +26,16 @@ type Props = ModalProps & {
     | number
     | string
     | Record<string, string | number>
+  onClose?: () => void
 }
 
-const HackerDialog = ({ title, actions, children, ...others }: Props) => {
+const HackerDialog = ({
+  title,
+  actions,
+  children,
+  onClose,
+  ...others
+}: Props) => {
   return (
     <Dialog
       {...others}
@@ -55,7 +62,7 @@ const HackerDialog = ({ title, actions, children, ...others }: Props) => {
           <Typography component={'h6'} fontSize={'1rem'}>
             {title}
           </Typography>
-          <IconButton disableRipple>
+          <IconButton disableRipple onClick={() => onClose && onClose()}>
             <X color={tailwindColors.green[500]} size={18} />
           </IconButton>
         </Stack>

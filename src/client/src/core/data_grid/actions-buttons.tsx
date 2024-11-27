@@ -4,10 +4,11 @@ import { HackerButton } from '../button/HackerButton'
 import { FileDown } from 'lucide-react'
 
 interface Props {
+  disabled?: boolean
   onDownload?: () => void
 }
 
-const ActionsButtons = ({ onDownload }: Props) => {
+const ActionsButtons = ({ disabled, onDownload }: Props) => {
   return (
     <Box
       sx={{
@@ -28,6 +29,7 @@ const ActionsButtons = ({ onDownload }: Props) => {
       >
         {onDownload && (
           <HackerButton
+            disabled={disabled}
             variant="Button"
             sx={{
               width: '40px !important',

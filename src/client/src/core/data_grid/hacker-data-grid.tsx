@@ -263,7 +263,6 @@ function Pagination({
   page,
   onPageChange,
   count,
-  ...rest
 }: Pick<
   TablePaginationProps & { count: number },
   'page' | 'onPageChange' | 'className' | 'count'
@@ -273,7 +272,6 @@ function Pagination({
   const pageInterval = useMemo(() => {
     return Math.floor(page / MAX_PAGINATION_NUMBERS)
   }, [page])
-  console.log('REST', rest)
   return (
     <Stack p={4} pr={2}>
       <HackerPagination

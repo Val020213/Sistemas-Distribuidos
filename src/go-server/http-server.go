@@ -56,7 +56,7 @@ func getUrlStates(c *gin.Context) {
 
 func downloadURL(c *gin.Context) {
 
-	url := c.Query("url")
+	url := c.Query("id")
 
 	log.Println("Downloading URL: ", url)
 
@@ -68,6 +68,7 @@ func downloadURL(c *gin.Context) {
 	}
 
 	c.Data(http.StatusOK, "text/html", content.Bytes())
+	c.Header("Content-Disposition", "attachment; filename=download.html")
 }
 
 func main() {

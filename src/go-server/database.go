@@ -49,13 +49,17 @@ func AddNewURL(url string) RequestStatus {
 
 func listUrlStates() RequestStatus {
 	var result []map[string]string
+
+	i := 0
 	for url, status := range Status {
 		result = append(result, map[string]string{
-			"id":     url,
+			"id":     fmt.Sprintf("%d", i),
 			"url":    url,
 			"status": string(status),
 		})
+		i++
 	}
+
 	return RequestStatus{
 		http.StatusOK,
 		gin.H{"body": result},
