@@ -11,8 +11,10 @@ export const clientRoutes = {
 
 export const backendRoutes = {
   fetch: `${process.env.NEXT_PUBLIC_API_URL}/fetch`,
+  list: `${process.env.NEXT_PUBLIC_API_URL}/list`,
 }
 
 export const tagsRoutes = {
   fetch: 'fetchUrlService',
+  list: 'listUrlService',
 }

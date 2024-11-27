@@ -48,12 +48,18 @@ func AddNewURL(url string) RequestStatus {
 }
 
 func listUrlStates() RequestStatus {
-
+	var result []map[string]string
+	for url, status := range Status {
+		result = append(result, map[string]string{
+			"id":     url,
+			"url":    url,
+			"status": string(status),
+		})
+	}
 	return RequestStatus{
 		http.StatusOK,
-		gin.H{"body": Status},
+		gin.H{"body": result},
 	}
-
 }
 
 type HTMLError string

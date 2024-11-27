@@ -6,6 +6,8 @@ import AddUrlForm from './AddUrlForm'
 import useShowHackerMessage from '@/hooks/useShowHackerMessage'
 import { useRouter } from 'next/navigation'
 import { fetchUrlService } from '@/services/url-service'
+import { tagsRoutes } from '@/routes/routes'
+import { revalidateServerTags } from '@/routes/cache'
 
 const AddUrlFormContainer = () => {
   const hackerMessage = useShowHackerMessage()
@@ -23,6 +25,7 @@ const AddUrlFormContainer = () => {
       const response = await fetchUrlService(data.url)
       if (response.statusCode === 200) {
         hackerMessage('Url agregada correctamente', 'success')
+        revalidateServerTags(tagsRoutes.list)
         navigate.back()
       } else {
         hackerMessage(response.message, 'error')

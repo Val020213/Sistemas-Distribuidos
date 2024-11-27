@@ -215,11 +215,20 @@ const StyledGridOverlay = styled('div')(({ theme }) => ({
 
 function CustomNoRowsOverlay() {
   return (
-    <StyledGridOverlay>
+    <StyledGridOverlay
+      sx={{
+        '& .no-rows-primary': {
+          fill: tailwindColors.green[500],
+        },
+        '& .no-rows-secondary': {
+          fill: tailwindColors.green[900],
+        },
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
-        width={96}
+        width={180}
         viewBox="0 0 452 257"
         aria-hidden
         focusable="false"
@@ -241,7 +250,11 @@ function CustomNoRowsOverlay() {
           d="M0 10C0 4.477 4.477 0 10 0h380c5.523 0 10 4.477 10 10s-4.477 10-10 10H10C4.477 20 0 15.523 0 10ZM0 59c0-5.523 4.477-10 10-10h231c5.523 0 10 4.477 10 10s-4.477 10-10 10H10C4.477 69 0 64.523 0 59ZM0 106c0-5.523 4.477-10 10-10h203c5.523 0 10 4.477 10 10s-4.477 10-10 10H10c-5.523 0-10-4.477-10-10ZM0 153c0-5.523 4.477-10 10-10h195.5c5.523 0 10 4.477 10 10s-4.477 10-10 10H10c-5.523 0-10-4.477-10-10ZM0 200c0-5.523 4.477-10 10-10h203c5.523 0 10 4.477 10 10s-4.477 10-10 10H10c-5.523 0-10-4.477-10-10ZM0 247c0-5.523 4.477-10 10-10h231c5.523 0 10 4.477 10 10s-4.477 10-10 10H10c-5.523 0-10-4.477-10-10Z"
         />
       </svg>
-      <Box sx={{ mt: 2 }}>No hay datos</Box>
+      <Box sx={{ mt: 2 }}>
+        <Typography component={'h2'} fontWeight={500} sx={{}}>
+          SIN URLS QUE MOSTRAR
+        </Typography>
+      </Box>
     </StyledGridOverlay>
   )
 }
@@ -249,20 +262,29 @@ function CustomNoRowsOverlay() {
 function Pagination({
   page,
   onPageChange,
-}: Pick<TablePaginationProps, 'page' | 'onPageChange' | 'className'>) {
+  count,
+  ...rest
+}: Pick<
+  TablePaginationProps & { count: number },
+  'page' | 'onPageChange' | 'className' | 'count'
+>) {
   const apiRef = useGridApiContext()
   const pageCount = useGridSelector(apiRef, gridPageCountSelector)
-
   const pageInterval = useMemo(() => {
     return Math.floor(page / MAX_PAGINATION_NUMBERS)
   }, [page])
-
+  console.log('REST', rest)
   return (
     <Stack p={4} pr={2}>
       <HackerPagination
         currentPage={page}
         numbers={Array.from(
-          { length: MAX_PAGINATION_NUMBERS },
+          {
+            length: Math.floor(
+              (count - pageInterval * MAX_PAGINATION_NUMBERS) /
+                MAX_PAGINATION_NUMBERS
+            ),
+          },
           (_, i) => pageInterval * MAX_PAGINATION_NUMBERS + i + 1
         )}
         onChangeCurrentPage={onPageChange}

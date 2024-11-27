@@ -1,7 +1,6 @@
-import { UrlDataType } from '@/app/types/url_data_type'
 import { ScrapperContainer } from '@/modules/system/service/scrapper/ScrapperContainer'
+import { listUrlService } from '@/services/url-service'
 import { Metadata } from 'next'
-import { generateMockData } from './generateMockData'
 import { SearchParams } from 'next/dist/server/request/search-params'
 
 export const metadata: Metadata = {
@@ -14,9 +13,15 @@ type Props = {
 }
 
 export default async function Page({ searchParams }: Props) {
-  const mockUrlData: UrlDataType[] = generateMockData(100)
+  const response = await listUrlService()
 
+  if (response.statusCode !== 200) {
+    return new Error('Error fetching data')
+  }
   return (
-    <ScrapperContainer data={mockUrlData} searchParams={await searchParams} />
+    <ScrapperContainer
+      data={response.data.body}
+      searchParams={await searchParams}
+    />
   )
 }

@@ -4,7 +4,7 @@ import ActionsButtons from '@/core/data_grid/actions-buttons'
 import UrlStatusChip from '@/core/data_grid/url-chip'
 import HackerDataGrid from '@/core/data_grid/hacker-data-grid'
 import useShowHackerMessage from '@/hooks/useShowHackerMessage'
-import { Stack } from '@mui/material'
+import { Box, Stack } from '@mui/material'
 import { GridColDef } from '@mui/x-data-grid'
 import { HackerButton } from '@/core/button/HackerButton'
 import Link from 'next/link'
@@ -98,6 +98,7 @@ export const ScrapperContainer = ({ data, searchParams }: Props) => {
         </Link>
       </Stack>
       <HackerDataGrid columns={columns} data={data} />
+      <Box height={8} />
       <AddUrl currentModal={searchParams?.currentModal as string} />
     </Stack>
   )

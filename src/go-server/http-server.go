@@ -78,7 +78,7 @@ func main() {
 	router.Use(cors.Default())
 
 	router.GET("/fetch", fetchURL)
-	router.GET("/state", getUrlStates)
+	router.GET("/list", getUrlStates)
 	router.GET("/download", downloadURL)
 	router.GET("/", getHome)
 
