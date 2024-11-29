@@ -9,7 +9,10 @@ services:
     volumes:
       - ./go-server:/app
     networks:
-      - client1-network
+      client1-network:
+        ipv4_address: 172.20.0.2
+      client2-network:
+        ipv4_address: 172.21.0.2
 
   frontend-1:
     build:
@@ -22,9 +25,12 @@ services:
       - ./client:/app
       - /app/node_modules
     networks:
-      - client1-network
+      client1-network:
+        ipv4_address: 172.20.0.3
     depends_on:
       - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://172.20.0.2:8080
 
   frontend-2:
     build:
@@ -37,10 +43,19 @@ services:
       - ./client:/app
       - /app/node_modules
     networks:
-      - client2-network
+      client2-network:
+        ipv4_address: 172.21.0.3
     depends_on:
       - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://172.21.0.2:8080
 
 networks:
   client1-network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
   client2-network:
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
