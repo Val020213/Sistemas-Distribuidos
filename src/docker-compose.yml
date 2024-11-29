@@ -10,15 +10,16 @@ services:
       - ./go-server:/app
     networks:
       - client1-network
-      - client2-network  # El backend está en ambas redes
 
   frontend-1:
     build:
-      context: ./cliente
+      context: ./client
+    env_file:
+      - ./client/.env
     ports:
       - "3000:3000"
     volumes:
-      - ./cliente:/app
+      - ./client:/app
       - /app/node_modules
     networks:
       - client1-network
@@ -27,11 +28,13 @@ services:
 
   frontend-2:
     build:
-      context: ./cliente
+      context: ./client
+    env_file:
+      - ./client/.env
     ports:
-      - "3001:3000"  # Cambiamos el puerto externo
+      - "3001:3000"
     volumes:
-      - ./cliente:/app
+      - ./client:/app
       - /app/node_modules
     networks:
       - client2-network
@@ -40,6 +43,4 @@ services:
 
 networks:
   client1-network:
-    driver: bridge
   client2-network:
-    driver: bridge
