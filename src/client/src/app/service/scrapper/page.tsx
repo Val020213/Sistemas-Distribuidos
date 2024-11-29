@@ -1,37 +1,17 @@
-'use client'
-import { UrlDataType } from '@/app/types/url_data_type'
 import { ScrapperContainer } from '@/modules/system/service/scrapper/ScrapperContainer'
-import { backendRoutes } from '@/routes/routes'
 import { listUrlService } from '@/services/url-service'
-import { HackerApiResponse } from '@/types/api'
-// import { Metadata } from 'next'
-import React, { useEffect, useState } from 'react'
+import { Metadata } from 'next'
 
-// export const metadata: Metadata = {
-//   title: 'Scrapper Service',
-//   description: 'Scrapper url service',
-// }
+export const metadata: Metadata = {
+  title: 'Scrapper Service',
+  description: 'Scrapper url service',
+}
 
-export default function Page() {
-  const [response, setResponse] = useState<
-    HackerApiResponse<UrlDataType[]> | undefined
-  >()
+export default async function Page() {
+  const response = await listUrlService()
 
-  useEffect(() => {
-    try {
-      const fetchData = async () => {
-        const result = await listUrlService()
-        setResponse(result)
-      }
-      fetchData()
-    } catch (error) {
-      console.error(error)
-      setResponse(undefined)
-    }
-  }, [])
-
-  if (!response) {
-    return <div>{backendRoutes.list}</div>
+  if (response.statusCode !== 200) {
+    return new Error('Error fetching data')
   }
   return <ScrapperContainer data={response.data.body} />
 }
