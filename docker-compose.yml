@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./go-server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./go-server:/app
+    networks:
+      - client1-network
+      - client2-network  # El backend está en ambas redes
+
+  frontend-1:
+    build:
+      context: ./cliente
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./cliente:/app
+      - /app/node_modules
+    networks:
+      - client1-network
+    depends_on:
+      - backend
+
+  frontend-2:
+    build:
+      context: ./cliente
+    ports:
+      - "3001:3000"  # Cambiamos el puerto externo
+    volumes:
+      - ./cliente:/app
+      - /app/node_modules
+    networks:
+      - client2-network
+    depends_on:
+      - backend
+
+networks:
+  client1-network:
+    driver: bridge
+  client2-network:
+    driver: bridge
