@@ -1,4 +1,8 @@
 @echo off
+
+REM Navegar al directorio que contiene el docker-compose.yml
+cd src || exit /b 1
+
 REM 
 docker-compose down -v 
 

@@ -1,4 +1,6 @@
 #!/bin/bash
+cd ./src || exit 1
+
 docker-compose down -v # en caso de que ya exista un contenedor con el mismo nombre
 docker-compose up --build
 
