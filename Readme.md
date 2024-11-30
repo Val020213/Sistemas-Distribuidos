@@ -22,24 +22,28 @@ El proyecto se encuentra dividido en dos carpetas:
    git clone https://github.com/Val020213/Sistemas-Distribuidos
    cd Sistemas-Distribuidos
    ```
-2. Levantar los contenedores
+2. Dar permisos a los archivo .sh en caso de que nos encontremos en linux
+
+   ```bash
+   chmod +x check_directory.sh
+   ```
+3. Levantar los contenedores
 
    En el caso de Linux:
 
    ```bash
    sudo bash run.sh
    ```
-
    En el caso de WIndows:
 
    ```cmd
    ./run.bat
    ```
-3. Acceder a la aplicación:
+4. Acceder a la aplicación:
 
    - Cliente 1: [http://localhost:3000](http://localhost:3000)
    - Cliente 2: [http://localhost:3001](http://localhost:3001)
-4. Verificar Logs:
+5. Verificar Logs:
 
    Para ver los logs del frontend, ejecuta:
 
@@ -47,7 +51,6 @@ El proyecto se encuentra dividido en dos carpetas:
    docker logs frontend-1
    docker logs frontend-2
    ```
-
    Para ver los logs del backend, ejecuta:
 
    ```bash
