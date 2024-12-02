@@ -8,8 +8,14 @@ COPY package-lock.json ./
 
 ENV NEXT_PUBLIC_API_URL=NEXT_PUBLIC_API_URL
 
-RUN npm install --legacy-peer-deps
-
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+RUN apk add --no-cache iproute2
+
+COPY client.sh /app
+
+RUN chmod +x /app/client.sh
+
+CMD /app/client.sh
+
+RUN npm install --legacy-peer-deps && npm run dev

@@ -1,61 +1,67 @@
+version: '3.8'
+
 services:
+  router:
+    build:
+      context: ./router
+    networks:
+      backend-network:
+        ipv4_address: 10.0.10.254
+      client-network:
+        ipv4_address: 10.0.11.254
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    sysctls:
+      - net.ipv4.ip_forward=1
+
   backend:
     build:
       context: ./go-server
     ports:
       - "8080:8080"
-    volumes:
-      - ./go-server:/app
     networks:
-      client1-network:
-        ipv4_address: 172.20.0.2
-      client2-network:
-        ipv4_address: 172.21.0.2
+      backend-network:
+        ipv4_address: 10.0.10.2
+    depends_on:
+      - router
+    cap_add:
+      - NET_ADMIN
 
-  frontend-1:
+  frontend1:
     build:
       context: ./client
-    env_file:
-      - ./client/.env
     ports:
       - "3000:3000"
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-      - /app/.next
     networks:
-      client1-network:
-        ipv4_address: 172.20.0.3
+      client-network:
+        ipv4_address: 10.0.11.2
     depends_on:
       - backend
-    environment:
-      NEXT_PUBLIC_API_URL: http://172.20.0.2:8080
+    cap_add:
+      - NET_ADMIN
 
-  frontend-2:
+  frontend2:
     build:
       context: ./client
-    env_file:
-      - ./client/.env
     ports:
       - "3001:3000"
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-      - /app/.next
     networks:
-      client2-network:
-        ipv4_address: 172.21.0.3
+      client-network:
+        ipv4_address: 10.0.11.3
     depends_on:
       - backend
-    environment:
-      NEXT_PUBLIC_API_URL: http://172.21.0.2:8080
+    cap_add:
+      - NET_ADMIN
 
 networks:
-  client1-network:
+  backend-network:
+    driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
-  client2-network:
+        - subnet: 10.0.10.0/24
+  client-network:
+    driver: bridge
     ipam:
       config:
-        - subnet: 172.21.0.0/16
+        - subnet: 10.0.11.0/24

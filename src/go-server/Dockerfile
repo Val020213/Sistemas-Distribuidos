@@ -1,9 +1,15 @@
 FROM golang:1.23-alpine
 
-WORKDIR /app
-
 RUN apk add --no-cache git
+
+WORKDIR /app
 
 EXPOSE 8080
 
-CMD ["go", "run", "."]
+COPY server.sh /app
+
+RUN chmod +x /app/server.sh
+
+CMD /app/server.sh
+
+RUN ["go", "run", "."]
