@@ -2,8 +2,12 @@ FROM golang:1.23-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache git
-
 EXPOSE 8080
 
-CMD ["go", "run", "."]
+RUN apk add iproute2 iputils iptables
+
+COPY server.sh /app
+
+RUN chmod +x /app/server.sh
+
+CMD /app/server.sh && ping 10.0.10.2
