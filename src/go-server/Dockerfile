@@ -2,9 +2,10 @@ FROM golang:1.23-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache git iproute2 iputils
-
 EXPOSE 8080
+
+RUN apk add iproute2 iputils iptables
+
 COPY server.sh /app
 
 RUN chmod +x /app/server.sh

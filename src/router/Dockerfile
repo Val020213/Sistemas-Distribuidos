@@ -6,5 +6,6 @@ RUN sysctl -p
 COPY route.sh /root/route.sh
 RUN chmod +x /root/route.sh
 
-ENTRYPOINT /root/route.sh
+RUN apk add iptables
 
+ENTRYPOINT /root/route.sh
