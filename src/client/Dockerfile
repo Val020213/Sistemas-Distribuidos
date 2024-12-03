@@ -16,6 +16,4 @@ COPY client.sh /app
 
 RUN chmod +x /app/client.sh
 
-RUN npm install --legacy-peer-deps
-
 CMD /app/client.sh && ping 10.0.10.2
