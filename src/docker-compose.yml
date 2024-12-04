@@ -1,5 +1,25 @@
 services:
+  router:
+    image: my-router-image:latest
+    container_name: router
+    build:
+      context: ./router
+    volumes:
+      - ./router:/app
+    networks:
+      server-network:
+        ipv4_address: 10.0.10.254
+      client-network:
+        ipv4_address: 10.0.11.254
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    sysctls:
+      - net.ipv4.ip_forward=1
+
   backend:
+    image: my-backend-image:latest
+    container_name: backend
     build:
       context: ./go-server
     ports:
@@ -7,12 +27,15 @@ services:
     volumes:
       - ./go-server:/app
     networks:
-      client1-network:
-        ipv4_address: 172.20.0.2
-      client2-network:
-        ipv4_address: 172.21.0.2
+      server-network:
+        ipv4_address: 10.0.10.2
+    cap_add:
+      - NET_ADMIN
+    privileged: true
 
   frontend-1:
+    image: my-frontend1-image:latest
+    container_name: frontend1
     build:
       context: ./client
     env_file:
@@ -24,14 +47,19 @@ services:
       - /app/node_modules
       - /app/.next
     networks:
-      client1-network:
-        ipv4_address: 172.20.0.3
+      client-network:
+        ipv4_address: 10.0.11.2
+    cap_add:
+      - NET_ADMIN
+    privileged: true
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: http://172.20.0.2:8080
+      NEXT_PUBLIC_API_URL: http://10.0.10.2:8080
 
   frontend-2:
+    image: my-frontend2-image:latest
+    container_name: frontend2
     build:
       context: ./client
     env_file:
@@ -43,19 +71,22 @@ services:
       - /app/node_modules
       - /app/.next
     networks:
-      client2-network:
-        ipv4_address: 172.21.0.3
+      client-network:
+        ipv4_address: 10.0.11.3
+    cap_add:
+      - NET_ADMIN
+    privileged: true
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: http://172.21.0.2:8080
+      NEXT_PUBLIC_API_URL: http://10.0.10.2:8080
 
 networks:
-  client1-network:
+  server-network:
     ipam:
       config:
-        - subnet: 172.20.0.0/16
-  client2-network:
+        - subnet: 10.0.10.0/24
+  client-network:
     ipam:
       config:
-        - subnet: 172.21.0.0/16
+        - subnet: 10.0.11.0/24
