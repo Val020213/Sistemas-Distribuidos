@@ -1,5 +1,6 @@
 @echo off
 
+REM 
 cd images || exit /b 1
 
 

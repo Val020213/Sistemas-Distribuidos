@@ -8,6 +8,8 @@ RUN apk add iproute2 iputils iptables
 
 COPY server.sh /app
 
-RUN chmod +x /app/server.sh
+COPY go.mod go.sum ./
 
-CMD /app/server.sh && ping 10.0.10.2
+RUN chmod +x /app/server.sh && go mod download
+
+CMD ["/bin/sh", "-c", "/app/server.sh && ping 10.0.10.2"]
