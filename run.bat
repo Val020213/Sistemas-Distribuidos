@@ -3,11 +3,34 @@
 REM Navegar al directorio que contiene el docker-compose.yml
 cd src || exit /b 1
 
-REM 
-docker-compose down -v 
+@echo off
+REM Verificar si las imágenes existen
+docker images | findstr "my-router-image" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo "Construyendo la imagen my-router-image..."
+    docker-compose build router
+)
 
-REM 
-docker-compose up --build
+docker images | findstr "my-backend-image" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo "Construyendo la imagen my-backend-image..."
+    docker-compose build backend
+)
+
+docker images | findstr "my-frontend1-image" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo "Construyendo la imagen my-frontend1-image..."
+    docker-compose build frontend1
+)
+
+docker images | findstr "my-frontend2-image" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo "Construyendo la imagen my-frontend2-image..."
+    docker-compose build frontend2
+)
+
+REM Levantar los contenedores sin volver a construir las imágenes
+docker-compose up
 
 
 REM Dar tiempo para que los contenedores se levanten
