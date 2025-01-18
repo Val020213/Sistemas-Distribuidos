@@ -6,10 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os/signal"
+	server "scrapper_server/internal/api"
 	"syscall"
 	"time"
-
-	"scrapper_server/internal/server"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {

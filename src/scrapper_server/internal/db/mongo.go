@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
+	_ "github.com/joho/godotenv/autoload"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	_ "github.com/joho/godotenv/autoload"
 )
 
 type Service interface {
@@ -21,8 +21,8 @@ type service struct {
 }
 
 var (
-	host     = os.Getenv("BLUEPRINT_DB_HOST")
-	port     = os.Getenv("BLUEPRINT_DB_PORT")
+	host = os.Getenv("BLUEPRINT_DB_HOST")
+	port = os.Getenv("BLUEPRINT_DB_PORT")
 	//database = os.Getenv("BLUEPRINT_DB_DATABASE")
 )
 
@@ -44,7 +44,7 @@ func (s *service) Health() map[string]string {
 
 	err := s.db.Ping(ctx, nil)
 	if err != nil {
-		log.Fatalf("db down: %v", err) 
+		log.Fatalf("db down: %v", err)
 	}
 
 	return map[string]string{

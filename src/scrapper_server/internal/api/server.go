@@ -4,29 +4,25 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	database "scrapper_server/internal/db"
 	"strconv"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
-  
-	"scrapper_server/internal/database"
-  
 )
 
 type Server struct {
 	port int
-  
-	db   database.Service
-  
+
+	db database.Service
 }
 
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	NewServer := &Server{
 		port: port,
-  
-		db:   database.New(),
-  
+
+		db: database.New(),
 	}
 
 	// Declare Server config
