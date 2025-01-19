@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"fmt"
@@ -14,8 +14,9 @@ import (
 )
 
 type Server struct {
-	port int
-	db   database.Service
+	port  int
+	db    database.Service
+	queue chan string
 }
 
 func NewServer(db database.Service) *http.Server {
@@ -26,8 +27,9 @@ func NewServer(db database.Service) *http.Server {
 	}
 
 	srv := &Server{
-		port: port,
-		db:   db,
+		port:  port,
+		db:    db,
+		queue: make(chan string, 100), // Buffer de 100 tareas
 	}
 
 	// Configuración del servidor HTTP
