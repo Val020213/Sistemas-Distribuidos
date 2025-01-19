@@ -14,9 +14,9 @@ import (
 )
 
 type Server struct {
-	port  int
-	db    database.Service
-	queue chan string
+	port       int
+	db         database.Service
+	workerPool workerPool
 }
 
 func NewServer(db database.Service) *http.Server {
@@ -27,9 +27,9 @@ func NewServer(db database.Service) *http.Server {
 	}
 
 	srv := &Server{
-		port:  port,
-		db:    db,
-		queue: make(chan string, 100), // Buffer de 100 tareas
+		port:       port,
+		db:         db,
+		workerPool: NewWorkerPool(5, 100), // Crear un pool de 5 workers con capacidad de 100 tareas en cola
 	}
 
 	// Configuración del servidor HTTP

@@ -32,7 +32,21 @@ func (s *Server) CreateTaskHandler(c *gin.Context) {
 		return
 	}
 
-	s.queue <- task.ID
+	s.workerPool.queue <- task.ID
+
+	s.workerPool.RestartWorkerPool()
 
 	c.JSON(http.StatusCreated, gin.H{"taskId": task.ID, "status": task.Status})
+}
+
+func (s *Server) ListTasksHandler(c *gin.Context) {
+	// Obtener todas las tareas del repositorio
+	tasks, err := s.db.GetAllTasks()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		return
+	}
+
+	// Devolver las tareas en formato JSON
+	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }

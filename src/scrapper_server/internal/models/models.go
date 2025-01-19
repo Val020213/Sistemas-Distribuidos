@@ -18,6 +18,7 @@ type Task struct {
 	ID        string     `bson:"_id" json:"id"`
 	URL       string     `bson:"url" json:"url"`
 	Status    TaskStatus `bson:"status" json:"status"`
+	Content   string     `bson:"content,omitempty" json:"content,omitempty"`
 	CreatedAt time.Time  `bson:"created_at" json:"created_at"`
 	UpdatedAt time.Time  `bson:"updated_at" json:"updated_at"`
 }

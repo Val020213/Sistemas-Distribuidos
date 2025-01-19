@@ -15,6 +15,8 @@ type TaskService interface {
 	CreateTask(task *models.Task) error
 	UpdateTaskStatus(id string, status models.TaskStatus) error
 	GetTaskByID(id string) (*models.Task, error)
+	GetAllTasks() ([]*models.Task, error)
+	SaveTaskContent(taskID string, content string) error
 }
 
 // taskService implementación de TaskService
@@ -51,4 +53,36 @@ func (s *taskService) GetTaskByID(id string) (*models.Task, error) {
 		return nil, err
 	}
 	return &task, nil
+}
+
+// GetAllTasks obtiene todas las tareas de la base de datos
+func (s *taskService) GetAllTasks() ([]*models.Task, error) {
+	var tasks []*models.Task
+	cursor, err := s.collection.Find(context.Background(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		var task models.Task
+		if err := cursor.Decode(&task); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, &task)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
+// SaveTaskContent guarda el contenido descargado en la base de datos para una tarea específica.
+func (s *taskService) SaveTaskContent(taskID string, content string) error {
+	filter := bson.M{"_id": taskID}
+	update := bson.M{"$set": bson.M{"content": content, "updated_at": time.Now()}}
+	_, err := s.collection.UpdateOne(context.Background(), filter, update)
+	return err
 }
