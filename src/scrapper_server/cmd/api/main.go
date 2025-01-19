@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/signal"
 	server "scrapper_server/internal/api"
+	database "scrapper_server/internal/db"
 	"syscall"
 	"time"
 )
@@ -37,7 +38,7 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 
 func main() {
 
-	server := server.NewServer()
+	server := server.NewServer(database.New())
 
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
