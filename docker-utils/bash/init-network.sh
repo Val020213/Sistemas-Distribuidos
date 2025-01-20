@@ -12,17 +12,20 @@ export ROUTER_IP_SERVER="10.0.10.254"
 export ROUTER_IP_CLIENT="10.0.11.254"
 export ROUTER_VOLUME="./router:/app"
 
-docker images | grep -q "$ROUTER_IMAGE" || {
-    echo "Construyendo la imagen $ROUTER_IMAGE..."
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+docker images | grep "$ROUTER_IMAGE" || {
+    echo -e "${GREEN}Construyendo la imagen $ROUTER_IMAGE...${NC}"
     docker-compose build router
 }
 
-echo "Iniciando la red y router..."
+echo -e "${GREEN}Iniciando la red y router...${NC}"
 if docker network ls | grep -q "$SERVER_NETWORK"; then
     docker network inspect "$SERVER_NETWORK" -f '{{range .Containers}}{{.Name}} {{end}}' | xargs -r docker network disconnect "$SERVER_NETWORK"
     docker network rm "$SERVER_NETWORK"
 fi
-docker network create --subnet=$ROUTER_SUBNET_SERVER "$SERVER_NETWORK"
+docker network create --subnet="$ROUTER_SUBNET_SERVER" "$SERVER_NETWORK"
 
 docker rm -f $ROUTER_CONTAINER 2>/dev/null || true
 

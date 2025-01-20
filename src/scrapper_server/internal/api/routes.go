@@ -87,6 +87,17 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.GET("/tasks", s.ListTasksHandler)
 
+	// @Summary Get task content
+	// @Description Get the content of a task by ID
+	// @Tags tasks
+	// @Produce json
+	// @Param id path string true "Task ID"
+	// @Success 200 {object} map[string]string
+	// @Failure 404 {object} map[string]string
+	// @Router /tasks/{id}/content [get]
+
+	r.GET("/scraper/tasks/:id/content", s.GetTaskContentHandler)
+
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return r

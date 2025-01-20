@@ -21,8 +21,6 @@
 #!/bin/bash
 #!/bin/bash
 
-source ./docker-utils/bash/init-network.sh || exit 1
-
 DEFAULT_IMAGE="scrapper-client-image:latest"
 DEFAULT_VOLUMES=(
   "$(pwd)/client:/app"
@@ -30,13 +28,15 @@ DEFAULT_VOLUMES=(
   "/app/.next"
 )
 DEFAULT_PORT="3000:3000"
-DEFAULT_NETWORK=$CLIENT_NETWORK
-
+DEFAULT_NETWORK="scrapper-client-network"
 ENV_VARS=()
 
+
 if [ "$#" -lt 2 ]; then
-  echo "Uso: $0 -n <nombre_contenedor> -i <ip> [-p <puerto_host:puerto_contenedor>] [-e <env_var=valor>] [-network <red>] [-image <imagen>]"
+  echo -e "\e[31mUso: $0 -n <nombre_contenedor> -i <ip> [-p <puerto_host:puerto_contenedor>] [-e <env_var=valor>] [-network <red>] [-image <imagen>]\e[0m"
   exit 1
+else
+  echo -e "\e[32mIniciando script add-client.sh\e[0m"
 fi
 
 while [[ "$#" -gt 0 ]]; do
@@ -47,12 +47,12 @@ while [[ "$#" -gt 0 ]]; do
     -e|--env) ENV_VARS+=("$2"); shift 2 ;;
     -network|--network) NETWORK="$2"; shift 2 ;;
     -image|--image) IMAGE="$2"; shift 2 ;;
-    *) echo "Opción desconocida: $1"; exit 1 ;;
+    *) echo -e "\e[31mOpción desconocida: $1\e[0m"; exit 1 ;;
   esac
 done
 
 if [ -z "$CONTAINER_NAME" ] || [ -z "$IP" ]; then
-  echo "Error: Los parámetros -n y -i son obligatorios."
+  echo -e "\e[31mError: Los parámetros -n y -i son obligatorios.\e[0m"
   exit 1
 fi
 
@@ -62,8 +62,8 @@ IMAGE="${IMAGE:-$DEFAULT_IMAGE}"
 VOLUMES=("${DEFAULT_VOLUMES[@]}")
 
 if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
-  echo "Imagen $IMAGE no encontrada localmente. Construyendo la imagen..."
-  docker build -t "$IMAGE" ./client || { echo "Error al construir la imagen $IMAGE."; exit 1; }
+  echo -e "\e[33mImagen $IMAGE no encontrada localmente. Construyendo la imagen...\e[0m"
+  docker build -t "$IMAGE" ./client || { echo -e "\e[31mError al construir la imagen $IMAGE.\e[0m"; exit 1; }
 fi
 
 DOCKER_CMD="docker run -d --name $CONTAINER_NAME --network $NETWORK --ip $IP -p $PORT"
@@ -78,11 +78,11 @@ done
 
 DOCKER_CMD+=" --privileged --cap-add=NET_ADMIN $IMAGE"
 
-echo "Ejecutando: $DOCKER_CMD"
+echo -e "\e[32mEjecutando: $DOCKER_CMD\e[0m"
 eval "$DOCKER_CMD"
 
 if [ $? -eq 0 ]; then
-  echo "Contenedor $CONTAINER_NAME creado exitosamente."
+  echo -e "\e[32mContenedor $CONTAINER_NAME creado exitosamente.\e[0m"
 else
-  echo "Error al crear el contenedor $CONTAINER_NAME."
+  echo -e "\e[31mError al crear el contenedor $CONTAINER_NAME.\e[0m"
 fi

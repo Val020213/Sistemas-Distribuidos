@@ -50,3 +50,18 @@ func (s *Server) ListTasksHandler(c *gin.Context) {
 	// Devolver las tareas en formato JSON
 	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }
+
+func (s *Server) GetTaskContentHandler(c *gin.Context) {
+	// Obtener el ID de la tarea de la URL
+	taskID := c.Param("id")
+
+	// Obtener la tarea del repositorio
+	task, err := s.db.GetTaskByID(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	// Devolver el contenido de la tarea en formato JSON
+	c.JSON(http.StatusOK, gin.H{"content": task.Content})
+}
