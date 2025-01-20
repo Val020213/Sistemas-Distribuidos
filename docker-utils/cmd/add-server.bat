@@ -1,8 +1,11 @@
 @echo off
 
+REM Enable ANSI escape codes
+for /F "tokens=2 delims==" %%i in ('"prompt $E" ^& for %%i in (1) do rem') do set "ESC=%%i"
+
 REM ANSI color codes
-set GREEN=[32m
-set NC=[0m
+set GREEN=%ESC%[32m
+set NC=%ESC%[0m
 
 REM Default values
 set DEFAULT_NETWORK_NAME=scrapper-server-network
@@ -71,15 +74,15 @@ docker run -d ^
     -v %MONGO_VOLUME%:/data/db ^
     %DEFAULT_MONGO_IMAGE%
 
-echo %GREEN%MongoDB started in container '%MONGO_CONTAINER_NAME%' with IP %MONGO_IP%%NC%
+echo %GREEN%MongoDB has been successfully started in container '%MONGO_CONTAINER_NAME%' with IP address %MONGO_IP%.%NC%
 
 REM Build the server image from the Dockerfile
 docker image inspect "%DEFAULT_SERVER_IMAGE%" >nul 2>&1
 if errorlevel 1 (
-    echo %GREEN%Image %DEFAULT_SERVER_IMAGE% not found locally. Building the image...%NC%
-    docker build -t "%DEFAULT_SERVER_IMAGE%" ./scrapper_server
+    echo %GREEN%Docker image '%DEFAULT_SERVER_IMAGE%' not found locally. Building the image now...%NC%
+    docker build -t "%DEFAULT_SERVER_IMAGE%" .\src\scrapper_server
     if errorlevel 1 (
-        echo %GREEN%Error building image %DEFAULT_SERVER_IMAGE%.%NC%
+        echo %GREEN%An error occurred while building the Docker image '%DEFAULT_SERVER_IMAGE%'.%NC%
         exit /b 1
     )
 )
@@ -100,4 +103,4 @@ docker run -d ^
     -v /app/go/pkg ^
     %DEFAULT_SERVER_IMAGE%
 
-echo %GREEN%Server started in container '%SERVER_CONTAINER_NAME%', listening on port %SERVER_PORT% with IP %SERVER_IP%%NC%
+echo %GREEN%Server has been successfully started in container '%SERVER_CONTAINER_NAME%', listening on port %SERVER_PORT% with IP address %SERVER_IP%.%NC%
