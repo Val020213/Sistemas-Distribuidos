@@ -1,88 +1,93 @@
-# Este script crea y ejecuta un contenedor Docker con una configuración específica.
-# 
-# Uso:
-#   ./add-client.sh -n <nombre_contenedor> -i <ip> [-p <puerto_host:puerto_contenedor>] [-e <env_var=valor>] [-network <red>] [-image <imagen>]
-#
-# Parámetros:
-#   -n, --name       Nombre del contenedor (obligatorio)
-#   -i, --ip         Dirección IP del contenedor (obligatorio)
-#   -p, --port       Mapeo de puertos en formato <puerto_host:puerto_contenedor> (opcional, por defecto "3000:3000")
-#   -e, --env        Variables de entorno en formato <env_var=valor> (opcional, se pueden especificar múltiples)
-#   -network, --network Red de Docker a la que se conectará el contenedor (opcional, por defecto $CLIENT_NETWORK)
-#   -image, --image  Imagen de Docker a utilizar (opcional, por defecto "scrapper-client-image:latest")
-#
-# Ejemplo de uso:
-#   ./add-client.sh -n mi_contenedor -i 172.18.0.22 -p 8080:80 -e NODE_ENV=production -network mi_red -image mi_imagen:latest
-#
-# Descripción:
-#   Este script inicializa una red Docker, valida los parámetros proporcionados, asigna valores por defecto si es necesario,
-#   construye el comando `docker run` con las opciones especificadas y ejecuta el comando para crear y ejecutar el contenedor.
-#   Si el contenedor se crea exitosamente, muestra un mensaje de éxito; de lo contrario, muestra un mensaje de error.
 #!/bin/bash
-#!/bin/bash
+set -e
 
-DEFAULT_IMAGE="scrapper-client-image:latest"
-DEFAULT_VOLUMES=(
-  "$(pwd)/client:/app"
-  "/app/node_modules"
-  "/app/.next"
-)
-DEFAULT_PORT="3000:3000"
-DEFAULT_NETWORK="scrapper-client-network"
-ENV_VARS=()
+# Configuración de rutas
+CLIENT_DIR="$(pwd)/src/client"
+DOCKERFILE_PATH="$CLIENT_DIR/Dockerfile"
+ENV_FILE="$CLIENT_DIR/.env"
+IMAGE_NAME="scrapper-client-image:latest"
+NETWORK="scrapper-client-network"
+BASE_IP="10.0.11"
+API_ENDPOINT="10.0.10.2:8080"
 
+# Verificar Dockerfile
+[ -f "$DOCKERFILE_PATH" ] || { echo "Error: Dockerfile no encontrado"; exit 1; }
 
-if [ "$#" -lt 2 ]; then
-  echo -e "\e[31mUso: $0 -n <nombre_contenedor> -i <ip> [-p <puerto_host:puerto_contenedor>] [-e <env_var=valor>] [-network <red>] [-image <imagen>]\e[0m"
-  exit 1
+# Construir imagen si no existe
+if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
+    echo "Construyendo imagen del cliente..."
+    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" "$CLIENT_DIR"
+fi
+
+# Manejo de .env
+ENV_FILE_OPTION=""
+if [ -f "$ENV_FILE" ]; then
+    ENV_FILE_OPTION="--env-file $ENV_FILE"
 else
-  echo -e "\e[32mIniciando script add-client.sh\e[0m"
+    read -p "¿Continuar sin .env? (y/n) " -n 1 -r
+    [[ $REPLY =~ ^[Yy]$ ]] || exit 1
 fi
 
-while [[ "$#" -gt 0 ]]; do
-  case $1 in
-    -n|--name) CONTAINER_NAME="$2"; shift 2 ;;
-    -i|--ip) IP="$2"; shift 2 ;;
-    -p|--port) PORT="$2"; shift 2 ;;
-    -e|--env) ENV_VARS+=("$2"); shift 2 ;;
-    -network|--network) NETWORK="$2"; shift 2 ;;
-    -image|--image) IMAGE="$2"; shift 2 ;;
-    *) echo -e "\e[31mOpción desconocida: $1\e[0m"; exit 1 ;;
-  esac
+# Calcular siguiente IP
+LAST_IP=$(docker network inspect "$NETWORK" --format '{{range .Containers}}{{.IPv4Address}}{{end}}' 2>/dev/null | \
+          grep -oP '\d+\.\d+\.\d+\.\d+' | sort -t. -k4 -n | tail -1 || echo "10.0.11.1")
+
+LAST_OCTET=${LAST_IP##*.}
+NEXT_OCTET=$((LAST_OCTET + 1))
+
+# Corregir cálculo de IP (evitar 254 y 255)
+if [[ $NEXT_OCTET -ge 254 ]]; then
+    NEXT_OCTET=2
+fi
+NEW_IP="${BASE_IP}.${NEXT_OCTET}"
+
+# Calcular puerto válido (3000-65535)
+LAST_PORT=$(docker ps --format '{{.Ports}}' | grep -oP '\d+(?=->3000)' | sort -n | tail -1 || echo 2999)
+NEXT_PORT=$((LAST_PORT + 1))
+
+# Asegurar puerto mínimo de 3000
+if [[ $NEXT_PORT -lt 3000 ]]; then
+    NEXT_PORT=3000
+fi
+
+# Verificar puerto disponible
+while true; do
+    if ! ss -tuln | grep -q ":${NEXT_PORT} "; then
+        break
+    fi
+    ((NEXT_PORT++))
+    
+    if [[ $NEXT_PORT -gt 65535 ]]; then
+        echo "Error: No hay puertos disponibles"
+        exit 1
+    fi
 done
 
-if [ -z "$CONTAINER_NAME" ] || [ -z "$IP" ]; then
-  echo -e "\e[31mError: Los parámetros -n y -i son obligatorios.\e[0m"
-  exit 1
-fi
+# Crear contenedor
+echo "Creando cliente:"
+echo "Nombre: frontend-${NEXT_OCTET}"
+echo "IP: ${NEW_IP}"
+echo "Puerto: ${NEXT_PORT}"
 
-PORT="${PORT:-$DEFAULT_PORT}"
-NETWORK="${NETWORK:-$DEFAULT_NETWORK}"
-IMAGE="${IMAGE:-$DEFAULT_IMAGE}"
-VOLUMES=("${DEFAULT_VOLUMES[@]}")
+docker run -d \
+  --name "frontend-${NEXT_OCTET}" \
+  --network "$NETWORK" \
+  --ip "$NEW_IP" \
+  --restart unless-stopped \
+  --cap-add NET_ADMIN \
+  --privileged \
+  -v "${CLIENT_DIR}:/app" \
+  -v "/app/node_modules" \
+  -v "/app/.next" \
+  -p "${NEXT_PORT}:3000" \
+  -e NEXT_PUBLIC_API_URL="http://${API_ENDPOINT}" \
+  $ENV_FILE_OPTION \
+  "$IMAGE_NAME"
 
-if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
-  echo -e "\e[33mImagen $IMAGE no encontrada localmente. Construyendo la imagen...\e[0m"
-  docker build -t "$IMAGE" ./client || { echo -e "\e[31mError al construir la imagen $IMAGE.\e[0m"; exit 1; }
-fi
+echo "Cliente creado exitosamente!"
 
-DOCKER_CMD="docker run -d --name $CONTAINER_NAME --network $NETWORK --ip $IP -p $PORT"
+# Ver IPs asignadas
+docker network inspect scrapper-client-network --format '{{range .Containers}}{{.Name}} - {{.IPv4Address}}{{end}}'
 
-for ENV in "${ENV_VARS[@]}"; do
-  DOCKER_CMD+=" -e $ENV"
-done
-
-for VOL in "${VOLUMES[@]}"; do
-  DOCKER_CMD+=" -v $VOL"
-done
-
-DOCKER_CMD+=" --privileged --cap-add=NET_ADMIN $IMAGE"
-
-echo -e "\e[32mEjecutando: $DOCKER_CMD\e[0m"
-eval "$DOCKER_CMD"
-
-if [ $? -eq 0 ]; then
-  echo -e "\e[32mContenedor $CONTAINER_NAME creado exitosamente.\e[0m"
-else
-  echo -e "\e[31mError al crear el contenedor $CONTAINER_NAME.\e[0m"
-fi
+# Ver puertos en uso
+ss -tuln | grep 'LISTEN'
