@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --hostname 0.0.0.0 --port 3000",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0 --port 3000",
+    "dev": "next dev --turbopack",
+    "start": "next start",
     "next:lint": "next lint",
+    "build": "next build",
     "lint": "next lint",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
