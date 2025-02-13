@@ -84,3 +84,15 @@ Puertos: {{range $p, $conf := .NetworkSettings.Ports}}{{$p}} {{end}}'
 echo -e "\n${GREEN}Prueba de conectividad interna:${NC}"
 docker exec $ROUTER_CONTAINER ping -c 2 10.0.10.254
 docker exec $ROUTER_CONTAINER ping -c 2 10.0.11.254
+
+docker exec scrapper-router sh -c '
+iptables -t nat -A POSTROUTING -s 10.0.10.0/24 -o eth0 -j MASQUERADE;
+iptables -t nat -A POSTROUTING -s 10.0.11.0/24 -o eth1 -j MASQUERADE;
+iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT;
+iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT'
+
+docker exec scrapper-router ip route replace default via 10.0.10.254 dev eth1
+docker exec scrapper-router ip route add 10.0.11.0/24 dev eth0
+docker exec scrapper-router ip route add 10.0.10.0/24 dev eth1
+
+docker exec scrapper-router iptables -P FORWARD ACCEPT

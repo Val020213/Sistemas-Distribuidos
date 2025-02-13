@@ -1,93 +1,95 @@
 #!/bin/bash
 set -e
+cd ./src/ || exit 1
+# Configuration
+CLIENT_DIR="$(pwd)/client"
+COMPOSE_FILE="docker-compose-client.yaml"
+# NETWORK="scrapper-client-network"
+# BASE_IP="10.0.11"
+# API_IP="10.0.10.2"
+# API_PORT="8080"
+# SUBNET="${BASE_IP}.0/24"
 
-# Configuración de rutas
-CLIENT_DIR="$(pwd)/src/client"
-DOCKERFILE_PATH="$CLIENT_DIR/Dockerfile"
-ENV_FILE="$CLIENT_DIR/.env"
-IMAGE_NAME="scrapper-client-image:latest"
-NETWORK="scrapper-client-network"
-BASE_IP="10.0.11"
-API_ENDPOINT="10.0.10.2:8080"
+# Validate essential files
+[ -f "$COMPOSE_FILE" ] || { echo "Error: $COMPOSE_FILE not found"; exit 1; }
+[ -d "$CLIENT_DIR" ] || { echo "Error: client directory missing"; exit 1; }
 
-# Verificar Dockerfile
-[ -f "$DOCKERFILE_PATH" ] || { echo "Error: Dockerfile no encontrado"; exit 1; }
+# # Create network if not exists
+# if ! docker network inspect "$NETWORK" &>/dev/null; then
+#     echo "Creating network $NETWORK..."
+#     docker network create \
+#         --driver bridge \
+#         --subnet "$SUBNET" \
+#         --gateway "${BASE_IP}.254" \
+#         "$NETWORK"
+# fi
 
-# Construir imagen si no existe
-if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
-    echo "Construyendo imagen del cliente..."
-    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" "$CLIENT_DIR"
-fi
+# # Calculate next client number
+# LAST_CLIENT=$(docker ps -a --filter "name=frontend" --format "{{.Names}}" | 
+#     grep -oP '\d+$' | sort -n | tail -n1 || echo "0")
+# NEXT_CLIENT=$((LAST_CLIENT + 1))
 
-# Manejo de .env
-ENV_FILE_OPTION=""
-if [ -f "$ENV_FILE" ]; then
-    ENV_FILE_OPTION="--env-file $ENV_FILE"
-else
-    read -p "¿Continuar sin .env? (y/n) " -n 1 -r
-    [[ $REPLY =~ ^[Yy]$ ]] || exit 1
-fi
+# # Calculate next available IP
+# IP_LIST=$(docker network inspect "$NETWORK" --format '{{range .Containers}}{{.IPv4Address}} {{end}}')
+# VALID_IPS=$(echo "$IP_LIST" | grep -oP '\d+\.\d+\.\d+\.\d+' | 
+#     grep -vE '\.254$|\.255$' | sort -t. -k4n)
 
-# Calcular siguiente IP
-LAST_IP=$(docker network inspect "$NETWORK" --format '{{range .Containers}}{{.IPv4Address}}{{end}}' 2>/dev/null | \
-          grep -oP '\d+\.\d+\.\d+\.\d+' | sort -t. -k4 -n | tail -1 || echo "10.0.11.1")
-
-LAST_OCTET=${LAST_IP##*.}
-NEXT_OCTET=$((LAST_OCTET + 1))
-
-# Corregir cálculo de IP (evitar 254 y 255)
-if [[ $NEXT_OCTET -ge 254 ]]; then
-    NEXT_OCTET=2
-fi
-NEW_IP="${BASE_IP}.${NEXT_OCTET}"
-
-# Calcular puerto válido (3000-65535)
-LAST_PORT=$(docker ps --format '{{.Ports}}' | grep -oP '\d+(?=->3000)' | sort -n | tail -1 || echo 2999)
-NEXT_PORT=$((LAST_PORT + 1))
-
-# Asegurar puerto mínimo de 3000
-if [[ $NEXT_PORT -lt 3000 ]]; then
-    NEXT_PORT=3000
-fi
-
-# Verificar puerto disponible
-while true; do
-    if ! ss -tuln | grep -q ":${NEXT_PORT} "; then
-        break
-    fi
-    ((NEXT_PORT++))
+# if [ -z "$VALID_IPS" ]; then
+#     NEXT_OCTET=2  # Start from .2
+# else
+#     LAST_IP=$(echo "$VALID_IPS" | tail -n1)
+#     LAST_OCTET=${LAST_IP##*.}
+#     NEXT_OCTET=$((LAST_OCTET + 1))
     
-    if [[ $NEXT_PORT -gt 65535 ]]; then
-        echo "Error: No hay puertos disponibles"
-        exit 1
-    fi
-done
+#     # Reset sequence if approaching reserved IPs
+#     if [ "$NEXT_OCTET" -ge 254 ]; then
+#         echo "Warning: IP range exhausted, recycling from .2"
+#         NEXT_OCTET=2
+#     fi
+# fi
 
-# Crear contenedor
-echo "Creando cliente:"
-echo "Nombre: frontend-${NEXT_OCTET}"
-echo "IP: ${NEW_IP}"
-echo "Puerto: ${NEXT_PORT}"
+# NEW_IP="${BASE_IP}.${NEXT_OCTET}"
 
-docker run -d \
-  --name "frontend-${NEXT_OCTET}" \
-  --network "$NETWORK" \
-  --ip "$NEW_IP" \
-  --restart unless-stopped \
-  --cap-add NET_ADMIN \
-  --privileged \
-  -v "${CLIENT_DIR}:/app" \
-  -v "/app/node_modules" \
-  -v "/app/.next" \
-  -p "${NEXT_PORT}:3000" \
-  -e NEXT_PUBLIC_API_URL="http://${API_ENDPOINT}" \
-  $ENV_FILE_OPTION \
-  "$IMAGE_NAME"
+# # Find available port
+# PORT_START=3000
+# PORT_END=4000
+# NEXT_PORT=$(comm -23 \
+#     <(seq $PORT_START $PORT_END | sort) \
+#     <(docker ps --format '{{.Ports}}' | 
+#         grep -oP '\d+(?=->3000)' | sort -n) |
+#     head -n1)
 
-echo "Cliente creado exitosamente!"
+# # Generate dynamic compose override
+# OVERRIDE_FILE=".client-override.yml"
+# cat > "$OVERRIDE_FILE" <<EOF
+# version: '3.8'
 
-# Ver IPs asignadas
-docker network inspect scrapper-client-network --format '{{range .Containers}}{{.Name}} - {{.IPv4Address}}{{end}}'
+# services:
+#   frontend:
+#     image: scrapper-client-image:latest
+#     container_name: frontend${NEXT_CLIENT}
+#     networks:
+#       $NETWORK:
+#         ipv4_address: $NEW_IP
+#     ports:
+#       - "$NEXT_PORT:3000"
+#     environment:
+#       - NEXT_PUBLIC_API_URL=http://$API_IP:$API_PORT
 
-# Ver puertos en uso
-ss -tuln | grep 'LISTEN'
+# networks:
+#   $NETWORK:
+#     external: true
+# EOF
+
+# Run docker-compose
+# echo "Creating client ${NEXT_CLIENT}:"
+# echo "IP: $NEW_IP"
+# echo "Port: $NEXT_PORT"
+# echo "Container: frontend${NEXT_CLIENT}"
+
+docker-compose -f "$COMPOSE_FILE" up 
+
+# # Cleanup
+# rm "$OVERRIDE_FILE"
+
+echo "Client created successfully!"
