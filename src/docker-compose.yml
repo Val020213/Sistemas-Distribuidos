@@ -1,15 +1,15 @@
 services:
   router:
-    image: my-router-image:latest
+    image: scrapper-router-image:latest
     container_name: router
     build:
       context: ./router
     volumes:
       - ./router:/app
     networks:
-      server-network:
+      scrapper-server-network:
         ipv4_address: 10.0.10.254
-      client-network:
+      scrapper-client-network:
         ipv4_address: 10.0.11.254
     cap_add:
       - NET_ADMIN
@@ -18,7 +18,7 @@ services:
       - net.ipv4.ip_forward=1
 
   backend:
-    image: my-backend-image:latest
+    image: scrapper-server-image:latest
     container_name: backend
     build:
       context: ./go-server
@@ -27,14 +27,14 @@ services:
     volumes:
       - ./go-server:/app
     networks:
-      server-network:
+      scrapper-server-network:
         ipv4_address: 10.0.10.2
     cap_add:
       - NET_ADMIN
     privileged: true
 
-  frontend-1:
-    image: my-frontend1-image:latest
+  frontend:
+    image: scrapper-client-image:latest
     container_name: frontend1
     build:
       context: ./client
@@ -47,7 +47,7 @@ services:
       - /app/node_modules
       - /app/.next
     networks:
-      client-network:
+      scrapper-client-network:
         ipv4_address: 10.0.11.2
     cap_add:
       - NET_ADMIN
@@ -57,36 +57,12 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://10.0.10.2:8080
 
-  frontend-2:
-    image: my-frontend2-image:latest
-    container_name: frontend2
-    build:
-      context: ./client
-    env_file:
-      - ./client/.env
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-      - /app/.next
-    networks:
-      client-network:
-        ipv4_address: 10.0.11.3
-    cap_add:
-      - NET_ADMIN
-    privileged: true
-    depends_on:
-      - backend
-    environment:
-      NEXT_PUBLIC_API_URL: http://10.0.10.2:8080
-
 networks:
-  server-network:
+  scrapper-server-network:
     ipam:
       config:
         - subnet: 10.0.10.0/24
-  client-network:
+  scrapper-client-network:
     ipam:
       config:
         - subnet: 10.0.11.0/24

@@ -5,29 +5,24 @@ cd src || exit /b 1
 
 @echo off
 REM Verificar si las imágenes existen
-docker images | findstr "my-router-image" >nul
+docker images | findstr "scrapper-router-image" >nul
 if %ERRORLEVEL% NEQ 0 (
-    echo "Construyendo la imagen my-router-image..."
+    echo "Construyendo la imagen scrapper-router-image..."
     docker-compose build router
 )
 
-docker images | findstr "my-backend-image" >nul
+docker images | findstr "scrapper-server-image" >nul
 if %ERRORLEVEL% NEQ 0 (
-    echo "Construyendo la imagen my-backend-image..."
+    echo "Construyendo la imagen scrapper-server-image..."
     docker-compose build backend
 )
 
-docker images | findstr "my-frontend1-image" >nul
+docker images | findstr "scrapper-client-image" >nul
 if %ERRORLEVEL% NEQ 0 (
-    echo "Construyendo la imagen my-frontend1-image..."
-    docker-compose build frontend1
+    echo "Construyendo la imagen scrapper-client-image..."
+    docker-compose build frontend
 )
 
-docker images | findstr "my-frontend2-image" >nul
-if %ERRORLEVEL% NEQ 0 (
-    echo "Construyendo la imagen my-frontend2-image..."
-    docker-compose build frontend2
-)
 
 REM Levantar los contenedores sin volver a construir las imágenes
 docker-compose up

@@ -2,8 +2,8 @@
 cd ./src || exit 1
 
 # Verificar si las imágenes existen
-if ! docker images | grep -q "my-router-image"; then
-    echo "Construyendo la imagen my-router-image..."
+if ! docker images | grep -q "scrapper-router-image"; then
+    echo "Construyendo la imagen scrapper-router-image..."
     docker-compose build router
 fi
 
@@ -12,14 +12,9 @@ if ! docker images | grep -q "my-backend-image"; then
     docker-compose build backend
 fi
 
-if ! docker images | grep -q "my-frontend1-image"; then
-    echo "Construyendo la imagen my-frontend1-image..."
+if ! docker images | grep -q "scrapper-client-image"; then
+    echo "Construyendo la imagen scrapper-client-image..."
     docker-compose build frontend1
-fi
-
-if ! docker images | grep -q "my-frontend2-image"; then
-    echo "Construyendo la imagen my-frontend2-image..."
-    docker-compose build frontend2
 fi
 
 # Levantar los contenedores sin volver a construir las imágenes
