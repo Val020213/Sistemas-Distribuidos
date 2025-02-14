@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"scrapper_server/internal/models"
 	"time"
@@ -28,6 +29,7 @@ func (s *Server) CreateTaskHandler(c *gin.Context) {
 	}
 
 	if err := s.db.CreateTask(task); err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}

@@ -50,6 +50,9 @@ services:
       BLUEPRINT_DB_PASSWORD: password1234
       BLUEPRINT_DB_NAME: mongo_bp
       PORT: 8080
+      TASK_QUEUE_SIZE: 10
+      NUM_WORKERS: 5
+ 
     depends_on:
       mongo_bp:
         condition: service_healthy
