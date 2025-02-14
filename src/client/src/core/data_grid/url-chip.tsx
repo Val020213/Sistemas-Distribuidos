@@ -4,11 +4,11 @@ import { Chip } from '@mui/material'
 
 const UrlStatusChip = ({ urlStatus }: { urlStatus: UrlStatus }) => {
   const color =
-    urlStatus === 'pending'
-      ? 'yellow'
-      : urlStatus === 'scrapped'
+    urlStatus === 'error'
+      ? 'red'
+      : urlStatus === 'complete'
       ? 'green'
-      : 'red'
+      : 'yellow'
   return (
     <Chip
       sx={{
@@ -19,7 +19,7 @@ const UrlStatusChip = ({ urlStatus }: { urlStatus: UrlStatus }) => {
         height: '30px',
         fontSize: '0.625rem',
       }}
-      label={urlStatus.toUpperCase()}
+      label={(urlStatus ?? 'in_progress').toUpperCase()}
     />
   )
 }

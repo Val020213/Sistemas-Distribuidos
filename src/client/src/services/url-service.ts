@@ -6,8 +6,9 @@ import { HackerApiResponse } from '@/types/api'
 export async function fetchUrlService(
   url: string
 ): Promise<HackerApiResponse<string>> {
-  const response = await fetch(`${backendRoutes.fetch}?url=${url}`, {
-    method: 'GET',
+  const response = await fetch(`${backendRoutes.fetch}`, {
+    method: 'POST',
+    body: JSON.stringify({ url: url }),
     next: {
       tags: [tagsRoutes.fetch],
     },
@@ -22,17 +23,20 @@ export async function listUrlService(): Promise<
     method: 'GET',
     next: {
       tags: [tagsRoutes.list],
-      revalidate: 1,
     },
   })
+
   return response.json()
 }
-export async function downloadUrlService(id: string): Promise<string> {
-  const response = await fetch(`${backendRoutes.download}?id=${id}`, {
+
+export async function downloadUrlService(
+  id: string
+): Promise<HackerApiResponse<UrlDataType>> {
+  const response = await fetch(`${backendRoutes.download.replace(':id', id)}`, {
     method: 'GET',
     next: {
       tags: [tagsRoutes.download],
     },
   })
-  return response.text()
+  return response.json()
 }

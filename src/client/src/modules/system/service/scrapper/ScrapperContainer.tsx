@@ -10,7 +10,7 @@ import { HackerButton } from '@/core/button/HackerButton'
 import Link from 'next/link'
 import AddUrl from './add-url/AddUrl'
 import { downloadUrlService } from '@/services/url-service'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 type Props = {
   data: UrlDataType[]
@@ -19,15 +19,13 @@ type Props = {
 export const ScrapperContainer = ({ data }: Props) => {
   const hackerMessages = useShowHackerMessage()
 
-  useEffect(() => {
-    console.log(data)
-  }, [data])
-
   async function handleDownload(id: string) {
     const response = await downloadUrlService(id)
 
-    if (response) {
-      const url = window.URL.createObjectURL(new Blob([response]))
+    if (response.data) {
+      const url = window.URL.createObjectURL(
+        new Blob([response.data.content ?? ''])
+      )
       const link = document.createElement('a')
       link.href = url
       link.setAttribute('download', `${id}.html`)
@@ -82,8 +80,8 @@ export const ScrapperContainer = ({ data }: Props) => {
       renderCell: (params) => {
         return (
           <ActionsButtons
-            disabled={params.row.status !== 'scrapped'}
-            onDownload={() => handleDownload(params.row.url)}
+            disabled={params.row.status !== 'complete'}
+            onDownload={() => handleDownload(params.row.id.toString())}
           />
         )
       },
