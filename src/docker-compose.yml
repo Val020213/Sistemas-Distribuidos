@@ -36,7 +36,7 @@ services:
     privileged: true
     environment:
       BLUEPRINT_DB_HOST: mongo
-      BLUEPRINT_DB_PORT: 27017
+      BLUEPRINT_DB_PORT: 28017
       BLUEPRINT_DB_USER: myuser
       BLUEPRINT_DB_PASSWORD: mypassword
       BLUEPRINT_DB_NAME: mydb
@@ -54,7 +54,7 @@ services:
     volumes:
       - mongo-data:/data/db
     ports:
-      - "27017:27017"
+      - "28017:27017"
     networks:
       scrapper-server-network:
         ipv4_address: 10.0.10.3
