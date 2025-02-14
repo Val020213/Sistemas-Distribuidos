@@ -7,8 +7,8 @@ if ! docker images | grep -q "scrapper-router-image"; then
     docker-compose build router
 fi
 
-if ! docker images | grep -q "my-backend-image"; then
-    echo "Construyendo la imagen my-backend-image..."
+if ! docker images | grep -q "scrapper-server-image"; then
+    echo "Construyendo la imagen scrapper-server-image..."
     docker-compose build backend
 fi
 
@@ -20,6 +20,3 @@ fi
 # Levantar los contenedores sin volver a construir las imágenes
 docker-compose up
 
-sleep 10 # Delay para esperar a que los contenedores estén listos
-xdg-open http://localhost:3000 # Abrir el navegador para el frontend1
-xdg-open http://localhost:3001 # Abrir el navegador para el frontend2
