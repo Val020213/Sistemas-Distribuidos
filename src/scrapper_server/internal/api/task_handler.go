@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"scrapper_server/internal/models"
 	"time"
@@ -42,14 +41,35 @@ func (s *Server) CreateTaskHandler(c *gin.Context) {
 
 func (s *Server) ListTasksHandler(c *gin.Context) {
 	// Obtener todas las tareas del repositorio
-	tasks, err := s.db.GetAllTasks()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
-		return
+	// tasks, err := s.db.GetAllTasks()
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+	// 	return
+	// }
+	// fmt.Println("tasks", tasks)
+	// // Devolver las tareas en formato JSON
+	// c.JSON(http.StatusOK, gin.H{"tasks": tasks})
+
+	// MOCK
+	tasks := []*models.Task{
+		{
+			ID:        "1",
+			URL:       "https://www.google.com",
+			Status:    models.StatusInProgress,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		{
+			ID:        "2",
+			URL:       "https://www.facebook.com",
+			Status:    models.StatusInProgress,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 	}
-	fmt.Println("tasks", tasks)
-	// Devolver las tareas en formato JSON
+
 	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
+
 }
 
 func (s *Server) GetTaskContentHandler(c *gin.Context) {

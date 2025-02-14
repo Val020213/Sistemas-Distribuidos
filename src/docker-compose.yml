@@ -19,15 +19,24 @@ services:
     sysctls:
       - net.ipv4.ip_forward=1
 
+# PORT=8080
+# APP_ENV=local
+
+# BLUEPRINT_DB_HOST=mongo_bp
+# BLUEPRINT_DB_PORT=
+# BLUEPRINT_DB_USERNAME=melkey
+# BLUEPRINT_DB_ROOT_PASSWORD=password1234
+
   backend:
-    image: scrapper-server-image:latest
-    container_name: backend
+    restart: unless-stopped
+    image: scrapper-backend-image:latest
+    container_name: backend1
     build:
-      context: ./scrapper_server
+      context: ./server
     ports:
       - "8080:8080"
     volumes:
-      - ./scrapper_server:/app
+      - ./server:/app
     networks:
       scrapper-server-network:
         ipv4_address: 10.0.10.2
@@ -36,28 +45,38 @@ services:
     privileged: true
     environment:
       BLUEPRINT_DB_HOST: mongo
-      BLUEPRINT_DB_PORT: 28017
-      BLUEPRINT_DB_USER: myuser
-      BLUEPRINT_DB_PASSWORD: mypassword
-      BLUEPRINT_DB_NAME: mydb
+      BLUEPRINT_DB_PORT: 27017
+      BLUEPRINT_DB_USER: melkey
+      BLUEPRINT_DB_PASSWORD: password1234
+      BLUEPRINT_DB_NAME: mongo_bp
       PORT: 8080
     depends_on:
-      - mongo
+      mongo_bp:
+        condition: service_healthy
 
-  mongo:
+  mongo_bp:
+    restart: unless-stopped
     image: mongo:latest
-    container_name: scrapper-mongo
     environment:
-      MONGO_INITDB_ROOT_USERNAME: myuser
-      MONGO_INITDB_ROOT_PASSWORD: mypassword
-      MONGO_INITDB_DATABASE: mydb
-    volumes:
-      - mongo-data:/data/db
+      MONGO_INITDB_ROOT_USERNAME: melkey
+      MONGO_INITDB_ROOT_PASSWORD: password1234
+      MONGO_INITDB_DATABASE: mongo_bp
     ports:
-      - "28017:27017"
+      - "27017:27017"
+    volumes:
+      - mongo_volume_bp:/data/db
+    healthcheck:
+      test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: mongod --quiet --logpath /dev/null  # Desactiva logs
     networks:
       scrapper-server-network:
         ipv4_address: 10.0.10.3
+        aliases:
+        - mongo
 
   frontend:
     image: scrapper-client-image:latest
@@ -94,4 +113,7 @@ networks:
         - subnet: 10.0.11.0/24
 
 volumes:
-  mongo-data:
+  mongo_volume_bp:
+
+
+
