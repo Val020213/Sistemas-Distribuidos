@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   router:
     image: scrapper-router-image:latest
@@ -21,17 +23,41 @@ services:
     image: scrapper-server-image:latest
     container_name: backend
     build:
-      context: ./go-server
+      context: ./scrapper_server
     ports:
       - "8080:8080"
     volumes:
-      - ./go-server:/app
+      - ./scrapper_server:/app
     networks:
       scrapper-server-network:
         ipv4_address: 10.0.10.2
     cap_add:
       - NET_ADMIN
     privileged: true
+    environment:
+      BLUEPRINT_DB_HOST: mongo
+      BLUEPRINT_DB_PORT: 27017
+      BLUEPRINT_DB_USER: myuser
+      BLUEPRINT_DB_PASSWORD: mypassword
+      BLUEPRINT_DB_NAME: mydb
+      PORT: 8080
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    container_name: scrapper-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: myuser
+      MONGO_INITDB_ROOT_PASSWORD: mypassword
+      MONGO_INITDB_DATABASE: mydb
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      scrapper-server-network:
+        ipv4_address: 10.0.10.3
 
   frontend:
     image: scrapper-client-image:latest
@@ -66,3 +92,6 @@ networks:
     ipam:
       config:
         - subnet: 10.0.11.0/24
+
+volumes:
+  mongo-data:

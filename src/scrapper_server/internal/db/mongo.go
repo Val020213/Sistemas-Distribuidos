@@ -15,20 +15,19 @@ type Service interface {
 	Health() map[string]string
 	Close() error
 	TaskService
-	// Add the new repository method here
 }
 
 // service estructura que contiene el cliente Mongo
 type service struct {
-	db *mongo.Client
-	taskService
-	// Add the new repository here
+	db          *mongo.Client
+	TaskService // Add the new repository here
 }
 
 // New crea una nueva instancia de servicio de MongoDB
 func New() Service {
 	host := os.Getenv("BLUEPRINT_DB_HOST")
 	port := os.Getenv("BLUEPRINT_DB_PORT")
+
 	if host == "" || port == "" {
 		log.Fatal("BLUEPRINT_DB_HOST or BLUEPRINT_DB_PORT environment variables are not set")
 	}
@@ -39,7 +38,11 @@ func New() Service {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
-	return &service{db: client}
+	return &service{
+		db:          client,
+		TaskService: NewTaskService(client),
+		// Add the new repository here
+	}
 }
 
 // Health verifica el estado de la conexión con la base de datos

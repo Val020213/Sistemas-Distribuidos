@@ -10,9 +10,9 @@ export const clientRoutes = {
 }
 
 export const backendRoutes = {
-  fetch: `${process.env.NEXT_PUBLIC_API_URL}/fetch`,
-  list: `${process.env.NEXT_PUBLIC_API_URL}/list`,
-  download: `${process.env.NEXT_PUBLIC_API_URL}/download`,
+  fetch: `${process.env.NEXT_PUBLIC_API_URL}/tasks`,
+  list: `${process.env.NEXT_PUBLIC_API_URL}/tasks`,
+  download: `${process.env.NEXT_PUBLIC_API_URL}/tasks/:id/content`,
 }
 
 export const tagsRoutes = {

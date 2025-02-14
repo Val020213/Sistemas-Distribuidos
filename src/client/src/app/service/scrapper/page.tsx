@@ -13,5 +13,7 @@ export default async function Page() {
   if (response.statusCode !== 200) {
     return new Error('Error fetching data')
   }
+  console.log(response)
+
   return <ScrapperContainer data={response.data.body} />
 }

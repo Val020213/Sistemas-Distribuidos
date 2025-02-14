@@ -45,10 +45,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     cors.DefaultConfig().AllowOrigins, // Allow all origins for now
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: true, // Enable cookies/auth
+		AllowOrigins: []string{"*"}, // ✅ Allows all origins (for development)
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
 	}))
 
 	// health check
@@ -96,7 +95,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// @Failure 404 {object} map[string]string
 	// @Router /tasks/{id}/content [get]
 
-	r.GET("/scraper/tasks/:id/content", s.GetTaskContentHandler)
+	r.GET("/tasks/:id/content", s.GetTaskContentHandler)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

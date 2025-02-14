@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"scrapper_server/internal/models"
@@ -27,7 +28,7 @@ type taskService struct {
 // NewTaskService crea una nueva instancia de TaskService
 func NewTaskService(client *mongo.Client) TaskService {
 	return &taskService{
-		collection: client.Database("scrapper").Collection("tasks"),
+		collection: client.Database(os.Getenv("BLUEPRINT_DB_NAME")).Collection("tasks"),
 	}
 }
 

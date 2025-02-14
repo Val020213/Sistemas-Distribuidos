@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"scrapper_server/internal/models"
 	"time"
@@ -46,7 +47,7 @@ func (s *Server) ListTasksHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
 		return
 	}
-
+	fmt.Println("tasks", tasks)
 	// Devolver las tareas en formato JSON
 	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }

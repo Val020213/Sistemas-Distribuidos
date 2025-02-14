@@ -10,7 +10,7 @@ import { HackerButton } from '@/core/button/HackerButton'
 import Link from 'next/link'
 import AddUrl from './add-url/AddUrl'
 import { downloadUrlService } from '@/services/url-service'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Props = {
   data: UrlDataType[]
@@ -18,6 +18,10 @@ type Props = {
 
 export const ScrapperContainer = ({ data }: Props) => {
   const hackerMessages = useShowHackerMessage()
+
+  useEffect(() => {
+    console.log(data)
+  }, [data])
 
   async function handleDownload(id: string) {
     const response = await downloadUrlService(id)
