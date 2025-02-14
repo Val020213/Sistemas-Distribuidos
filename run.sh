@@ -2,9 +2,9 @@
 cd ./src || exit 1
 
 chmod +x ./scrapper_server/server.sh
+chmod +x ./client/client.sh
 
-
-# Verificar si las imágenes existen
+# Verificar si las imágenes existen y construirlas si no están
 if ! docker images | grep -q "scrapper-router-image"; then
     echo "Construyendo la imagen scrapper-router-image..."
     docker-compose build router
@@ -21,5 +21,7 @@ if ! docker images | grep -q "scrapper-client-image"; then
 fi
 
 # Levantar los contenedores sin volver a construir las imágenes
-docker-compose up
+docker-compose up -d
 
+# Dar tiempo para que los contenedores se levanten
+sleep 10
