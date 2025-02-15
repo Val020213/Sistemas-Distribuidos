@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 
+	"server/internal/chord"
 	"server/internal/database"
 	"server/internal/models"
 	"server/internal/scraper"
@@ -26,12 +27,16 @@ func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	queueSize := utils.GetEnvAsInt("TASK_QUEUE_SIZE", 100)
 	numWorkers := utils.GetEnvAsInt("NUM_WORKERS", 5)
+	ip_address := os.Getenv("IP_ADDRESS")
+	rpc_port := os.Getenv("RPC_PORT")
 
 	NewServer := &Server{
 		port:      port,
 		db:        database.New(),
 		TaskQueue: make(chan string, queueSize),
 	}
+
+	node := chord.NewNode(fmt.Sprintf(ip_address, rpc_port), fmt.Sprintf(ip_address, port), 16)
 
 	// Start worker pool
 	for i := 0; i < numWorkers; i++ {
@@ -47,7 +52,7 @@ func NewServer() *http.Server {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	return server
+	return server, node
 }
 
 func (s *Server) worker() {

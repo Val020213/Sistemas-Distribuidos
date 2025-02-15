@@ -83,6 +83,8 @@ for ((i = START_INSTANCE; i <= END_INSTANCE; i++)); do
         -e BLUEPRINT_DB_PASSWORD=password1234 \
         -e BLUEPRINT_DB_NAME=mongo_bp \
         -e PORT=8080 \
+        -e RPC_PORT=50051 \
+        -e IP_ADDRESS=10.0.10.1$i \
         -e TASK_QUEUE_SIZE=10 \
         -e NUM_WORKERS=5 \
         scrapper-backend-image:latest
