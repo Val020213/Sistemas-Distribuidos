@@ -15,10 +15,7 @@ if ! docker images | grep -q "scrapper-server-image"; then
     docker-compose build backend
 fi
 
-if ! docker images | grep -q "scrapper-client-image"; then
-    echo "Construyendo la imagen scrapper-client-image..."
-    docker-compose build frontend
-fi
+
 
 # Levantar los contenedores sin volver a construir las imágenes
 docker-compose up -d

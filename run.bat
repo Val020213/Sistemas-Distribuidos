@@ -11,18 +11,11 @@ if %ERRORLEVEL% NEQ 0 (
     docker-compose build router
 )
 
-docker images | findstr "scrapper-server-image" >nul
+docker images | findstr " scrapper-backend-image" >nul
 if %ERRORLEVEL% NEQ 0 (
-    echo "Construyendo la imagen scrapper-server-image..."
+    echo "Construyendo la imagen  scrapper-backend-image..."
     docker-compose build backend
 )
-
-docker images | findstr "scrapper-client-image" >nul
-if %ERRORLEVEL% NEQ 0 (
-    echo "Construyendo la imagen scrapper-client-image..."
-    docker-compose build frontend
-)
-
 
 REM Levantar los contenedores sin volver a construir las imágenes
 docker-compose up
