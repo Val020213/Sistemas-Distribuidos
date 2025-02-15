@@ -58,9 +58,16 @@ func (s *Server) worker() {
 	}()
 
 	for taskID := range s.TaskQueue {
-		task, err := s.db.GetTask(taskID)
+
+		taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
 		if err != nil {
-			log.Printf("Error fetching task %s: %v", taskID, err)
+			log.Printf("Invalid task ID format %s: %v", taskID, err)
+			continue
+		}
+
+		task, err := s.db.GetTask(uint32(taskIDUint))
+		if err != nil {
+			log.Printf("Error fetching task %d: %v", taskIDUint, err)
 			continue
 		}
 

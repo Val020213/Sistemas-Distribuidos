@@ -6,21 +6,21 @@ import (
 	"log"
 	"os"
 	"server/internal/models"
+	"server/internal/utils"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Service interface {
 	Health() map[string]string
-	CreateTask(task models.TaskType) (string, error)
+	CreateTask(task models.TaskType) (uint32, error)
 	UpdateTask(task models.TaskType) error
 	GetTasks() ([]models.TaskType, error)
-	GetTask(id string) (models.TaskType, error)
+	GetTask(id uint32) (models.TaskType, error)
 }
 
 type service struct {
@@ -71,27 +71,51 @@ func (s *service) Health() map[string]string {
 
 // Task Repository
 
-func (s *service) CreateTask(task models.TaskType) (string, error) {
-	// Set a context with timeout for the insert operation.
+func (s *service) CreateTask(task models.TaskType) (uint32, error) {
+	// Set a context with timeout for the operation.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Set the timestamps for task creation and last update.
 	now := time.Now()
 	task.CreatedAt = now
 	task.UpdatedAt = now
 	task.Status = models.StatusInProgress
-	if task.ID == "" {
-		task.ID = primitive.NewObjectID().Hex()
+
+	if task.ID == 0 {
+		task.ID = utils.GenerateUniqueHashUrl(task.URL)
 	}
 
-	// Get the "tasks" collection from the configured database.
 	collection := s.db.Database(database).Collection("tasks")
 
-	// Insert the task into the collection.
-	_, err := collection.InsertOne(ctx, task)
+	filter := bson.M{
+		"_id": task.ID,
+		"status": bson.M{
+			"$in": []interface{}{models.StatusError, models.StatusComplete},
+		},
+	}
+	fmt.Println("filter result", filter)
+	update := bson.M{
+		"$set": bson.M{
+			"content":    task.Content,
+			"updated_at": now,
+			"status":     models.StatusInProgress,
+		},
+	}
+
+	updateResult, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return "", fmt.Errorf("failed to insert task: %v", err)
+		return 0, fmt.Errorf("failed to update existing task: %v", err)
+	}
+
+	fmt.Println("update result", updateResult)
+	if updateResult.MatchedCount > 0 {
+		return task.ID, nil
+	}
+
+	fmt.Println("Inserting...")
+	_, err = collection.InsertOne(ctx, task)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert task: %v", err)
 	}
 
 	return task.ID, nil
@@ -134,7 +158,7 @@ func (s *service) GetTasks() ([]models.TaskType, error) {
 	return tasks, nil
 }
 
-func (s *service) GetTask(id string) (models.TaskType, error) {
+func (s *service) GetTask(id uint32) (models.TaskType, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

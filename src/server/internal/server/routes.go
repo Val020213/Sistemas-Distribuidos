@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"server/internal/models"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -95,15 +96,15 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		})
 		return
 	}
-
 	select {
-	case s.TaskQueue <- taskID:
+	case s.TaskQueue <- strconv.FormatUint(uint64(taskID), 10):
 		c.JSON(http.StatusAccepted, gin.H{
 			"statusCode": http.StatusOK,
 			"status":     "success",
 			"message":    "Task queued",
 			"data":       taskID,
 		})
+
 	default:
 		log.Printf("Queue full. Task ID: %v", taskID)
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -115,13 +116,18 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 }
 
 func (s *Server) getTaskByIDHandler(c *gin.Context) {
-	idStr := c.Param("id")
-	if idStr == "" {
+	taskID := c.Param("id")
+	if taskID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id path parameter is required"})
 		return
 	}
 
-	task, err := s.db.GetTask(idStr)
+	taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
+		return
+	}
+	task, err := s.db.GetTask(uint32(taskIDUint))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return

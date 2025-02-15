@@ -15,7 +15,7 @@ const (
 )
 
 type TaskType struct {
-	ID        string         `bson:"_id" json:"id"`
+	ID        uint32         `bson:"_id" json:"id"`
 	URL       string         `bson:"url" json:"url"`
 	Status    TaskStatusType `bson:"status" json:"status"`
 	Content   string         `bson:"content,omitempty" json:"content,omitempty"`
