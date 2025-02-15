@@ -4,6 +4,8 @@ set -e
 
 cd ./src || exit 1
 
+chmod +x ./server/server.sh
+
 # Set the number of new instances you want to create
 INSTANCES=1
 
@@ -49,20 +51,23 @@ for ((i = START_INSTANCE; i <= END_INSTANCE; i++)); do
     mongoPort=$((27017 + i))
     echo "Creating mongo instance $i..."
     docker run -d --restart unless-stopped --name mongo_bp$i \
-        -p "$mongoPort":27017 \
-        -v mongo_volume_bp$i:/data/db \
-        --network scrapper-server-network \
-        --ip 10.0.10.2$i \
-        --network-alias mongo$i \
-        -e MONGO_INITDB_ROOT_USERNAME=melkey \
-        -e MONGO_INITDB_ROOT_PASSWORD=password1234 \
-        -e MONGO_INITDB_DATABASE=mongo_bp \
-        --health-cmd "mongosh --eval 'db.adminCommand(\'ping\')'" \
-        --health-interval 5s \
-        --health-timeout 5s \
-        --health-retries 3 \
-        --health-start-period 15s \
-        mongo:latest mongod --quiet --logpath /dev/null
+    -p "$mongoPort":27017 \
+    -v mongo_volume_bp$i:/data/db \
+    --network scrapper-server-network \
+    --ip 10.0.10.2$i \
+    --network-alias mongo$i \
+    -e MONGO_INITDB_ROOT_USERNAME=melkey \
+    -e MONGO_INITDB_ROOT_PASSWORD=password1234 \
+    -e MONGO_INITDB_DATABASE=mongo_bp \
+    --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'" \
+    --health-interval 5s \
+    --health-timeout 5s \
+    --health-retries 3 \
+    --health-start-period 60s \
+    --ulimit nofile=64000:64000 \
+    mongo:latest mongod --quiet --logpath /var/log/mongodb/mongod.log
+
+
 
     echo "Creating backend instance $i..."
     docker run -d --restart unless-stopped --name backend$i \
