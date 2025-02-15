@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package chord;
+
+option go_package = "./chordpb";
+
+service ChordService {
+	rpc Notify(NotifyRequest) returns (NotifyResponse);
+	rpc Health(Empty) returns (HealthResponse);
+}
+
+message Empty{
+
+}
+
+message NotifyRequest {
+	uint64 id = 1;
+	string address = 2;
+}
+
+message NotifyResponse {
+	bool updated = 1;
+}
+
+message HealthResponse {
+	uint64 id = 1;
+	string address = 2;
+}
