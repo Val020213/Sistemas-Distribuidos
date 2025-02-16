@@ -1,11 +1,17 @@
-FROM alpine
+FROM golang:1.23-alpine
 
-RUN echo "net.ipv4.ip_forward=1" | tee -a /etc/sysctl.conf
-RUN sysctl -p
+WORKDIR /app
 
-COPY route.sh /root/route.sh
-RUN chmod +x /root/route.sh
+RUN echo "net.ipv4.ip_forward=1" | tee -a /etc/sysctl.conf && sysctl -p
 
-RUN apk add iptables
+# COPY route.sh /root/route.sh
 
-ENTRYPOINT /root/route.sh
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+RUN chmod +x /app/route.sh
+
+ENTRYPOINT ["/app/route.sh"]
