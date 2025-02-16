@@ -37,7 +37,7 @@ if docker container inspect router >/dev/null 2>&1; then
 fi
 
 # Run the router container
-docker run -d --rm --name router --cap-add NET_ADMIN -e PYTHONUNBUFFERED=1 scrapper-router-image
+docker run -d --rm --name router --cap-add NET_ADMIN -v "$PWD/server":/app -v go-mod-cache:/go/pkg/mod -e PYTHONUNBUFFERED=1 scrapper-router-image
 
 # Connect router to both networks
 docker network connect --ip 10.0.10.254 scrapper-server-network router

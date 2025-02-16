@@ -42,7 +42,7 @@ if %errorlevel% equ 0 (
     echo Container router removed.
 )
 
-docker run -d --rm --name router --cap-add NET_ADMIN -e PYTHONUNBUFFERED=1 scrapper-router-image
+docker run -d --rm --name router --cap-add NET_ADMIN -v "%cd%\router":/app  -v "go-mod-cache:/go/pkg/mod" -e PYTHONUNBUFFERED=1 scrapper-router-image
 echo Container router executed.
 
 docker network connect --ip 10.0.10.254 scrapper-server-network router

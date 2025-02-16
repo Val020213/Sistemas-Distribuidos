@@ -86,7 +86,8 @@ func listenMulticast(ctx context.Context) {
 			}
 
 			message := string(buf[:n])
-			const prefix = "GRPC_SERVER:"
+			// log.Printf("Received multicast message from %s: %s", src, message)
+			const prefix = "SERVER:"
 			if len(message) > len(prefix) && message[:len(prefix)] == prefix {
 				srvAddr := message[len(prefix):]
 				serversMu.Lock()

@@ -12,6 +12,6 @@ RUN go mod download
 
 COPY . .
 
-RUN chmod +x /app/route.sh
+RUN apk add --no-cache iptables && chmod +x /app/route.sh
 
 ENTRYPOINT ["/app/route.sh"]

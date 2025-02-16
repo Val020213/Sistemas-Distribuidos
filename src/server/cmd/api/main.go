@@ -62,12 +62,12 @@ func main() {
 		}
 	}()
 
+	go multicast.MulticastAnnouncer()
+
 	err := httpServer.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}
-
-	go multicast.MulticastAnnouncer()
 
 	// Wait for the graceful shutdown to complete
 	<-done

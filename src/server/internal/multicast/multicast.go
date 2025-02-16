@@ -16,6 +16,7 @@ const (
 
 // Periodically sends a multicast message with the server's IP address
 func MulticastAnnouncer() {
+	log.Printf("Iniciando anunciador multicast en %s", multicastAddr)
 	addr, err := net.ResolveUDPAddr("udp4", multicastAddr)
 	if err != nil {
 		log.Fatalf("No se pudo resolver la dirección multicast: %v", err)
@@ -28,7 +29,7 @@ func MulticastAnnouncer() {
 	defer conn.Close()
 
 	for {
-		message := fmt.Sprintf("Server IP: %s", os.Getenv("IP_ADDRESS"))
+		message := fmt.Sprintf("SERVER:%s", os.Getenv("IP_ADDRESS"))
 		_, err := conn.Write([]byte(message))
 		if err != nil {
 			log.Printf("Error al enviar anuncio multicast: %v", err)
