@@ -58,7 +58,7 @@ for ((i = START_INSTANCE; i <= END_INSTANCE; i++)); do
         --cap-add NET_ADMIN \
         --privileged \
         --env-file "$PWD/client/.env" \
-        -e NEXT_PUBLIC_API_URL=http://10.0.10.11:8080 \
+        -e NEXT_PUBLIC_API_URL=http://10.0.10.254:8080 \
         scrapper-client-image:latest
 
 done

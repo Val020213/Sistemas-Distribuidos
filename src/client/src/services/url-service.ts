@@ -19,13 +19,14 @@ export async function fetchUrlService(
 export async function listUrlService(): Promise<
   HackerApiResponse<UrlDataType[]>
 > {
+  console.log('listUrlService - Request to address:', backendRoutes.list)
   const response = await fetch(`${backendRoutes.list}`, {
     method: 'GET',
     next: {
       tags: [tagsRoutes.list],
     },
   })
-
+  console.log('listUrlService - Response:', response)
   return response.json()
 }
 

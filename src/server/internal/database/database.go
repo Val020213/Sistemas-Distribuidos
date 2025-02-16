@@ -140,7 +140,8 @@ func (s *service) GetTasks() ([]models.TaskType, error) {
 
 	collection := s.db.Database(database).Collection("tasks")
 
-	cursor, err := collection.Find(ctx, bson.M{})
+	opts := options.Find().SetProjection(bson.M{"content": ""}) // no need to fetch content
+	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, err
 	}

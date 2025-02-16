@@ -4,6 +4,9 @@ set -e
 
 cd ./src || exit 1
 
+chmod +x ./router/route.sh
+
+
 # Ensure scrapper-server-network exists
 if ! docker network inspect scrapper-server-network >/dev/null 2>&1; then
     echo "Network scrapper-server-network not found. Creating network..."
@@ -37,7 +40,7 @@ if docker container inspect router >/dev/null 2>&1; then
 fi
 
 # Run the router container
-docker run -d --rm --name router --cap-add NET_ADMIN -v "$PWD/server":/app -v go-mod-cache:/go/pkg/mod -e PYTHONUNBUFFERED=1 scrapper-router-image
+docker run -d --rm --name router -p 1234:8080 --cap-add NET_ADMIN -v "$PWD/router":/app -v go-mod-cache:/go/pkg/mod -e PYTHONUNBUFFERED=1 scrapper-router-image
 
 # Connect router to both networks
 docker network connect --ip 10.0.10.254 scrapper-server-network router

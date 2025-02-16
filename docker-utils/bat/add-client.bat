@@ -61,7 +61,7 @@ for /L %%i in (%START_INSTANCE%,1,%END_INSTANCE%) do (
         --cap-add NET_ADMIN ^
         --privileged ^
         --env-file "%cd%\client\.env" ^
-        -e NEXT_PUBLIC_API_URL=http://10.0.10.11:8080 ^
+        -e NEXT_PUBLIC_API_URL=http://10.0.10.254:8080 ^
         scrapper-client-image:latest
 )
 

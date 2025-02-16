@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -150,6 +151,7 @@ func filterServer() ([]string, error) {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	candidates, _ := filterServer()
+	fmt.Print("Handle request from client addr", r.RemoteAddr, " to ", r.URL.Path, "\n")
 
 	if len(candidates) == 0 {
 		http.Error(w, "No servers available", http.StatusServiceUnavailable)
@@ -170,26 +172,41 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, srv := range targetServers {
 		go func(server string) {
 			req := r.Clone(ctx)
+			req.RequestURI = ""
 			req.URL = &url.URL{
 				Scheme: "http",
-				Host:   server,
+				Host:   fmt.Sprintf("%s:%d", server, 8080),
 				Path:   req.URL.Path,
 			}
 
 			resp, err := http.DefaultClient.Do(req)
+
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			bodyBytes, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+
 			if err != nil {
 				errChan <- err
 				return
 			}
 
 			if resp.StatusCode < 500 {
+				// Clonar la respuesta
+				clonedResp := &http.Response{
+					StatusCode: resp.StatusCode,
+					Header:     resp.Header,
+					Body:       io.NopCloser(bytes.NewReader(bodyBytes)),
+				}
+
 				select {
-				case respChan <- resp:
+				case respChan <- clonedResp:
 				default:
-					resp.Body.Close()
 				}
 			} else {
-				resp.Body.Close()
 				errChan <- fmt.Errorf("servidor %s respondió con error: %d", server, resp.StatusCode)
 			}
 		}(srv)
@@ -212,12 +229,15 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if successfulResp != nil {
 		defer successfulResp.Body.Close()
-		// Copiar headers
+
 		for k, v := range successfulResp.Header {
 			w.Header()[k] = v
 		}
 		w.WriteHeader(successfulResp.StatusCode)
-		io.Copy(w, successfulResp.Body)
+
+		if _, err := io.Copy(w, successfulResp.Body); err != nil {
+			log.Printf("Error copying response body: %v", err)
+		}
 		return
 	}
 
