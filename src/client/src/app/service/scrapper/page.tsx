@@ -11,7 +11,9 @@ export default async function Page() {
   const response = await listUrlService()
 
   if (response.statusCode !== 200) {
-    return new Error('Error fetching data')
+    console.error('Request Error', response)
+    throw new Error('No data received from server')
   }
-  return <ScrapperContainer data={response.data.body} />
+
+  return <ScrapperContainer data={response.data} />
 }

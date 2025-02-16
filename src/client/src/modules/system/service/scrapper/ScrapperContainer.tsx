@@ -19,14 +19,16 @@ type Props = {
 export const ScrapperContainer = ({ data }: Props) => {
   const hackerMessages = useShowHackerMessage()
 
-  async function handleDownload(id: string) {
-    const response = await downloadUrlService(id)
+  async function handleDownload(url: string) {
+    const response = await downloadUrlService(url)
 
-    if (response) {
-      const url = window.URL.createObjectURL(new Blob([response]))
+    if (response.data) {
+      const url = window.URL.createObjectURL(
+        new Blob([response.data.content ?? ''])
+      )
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `${id}.html`)
+      link.setAttribute('download', `${Date.now().toString()}.html`)
       document.body.appendChild(link)
       link.click()
       hackerMessages('Descargando archivo', 'success')
@@ -37,11 +39,6 @@ export const ScrapperContainer = ({ data }: Props) => {
   }
 
   const columns: GridColDef<UrlDataType>[] = [
-    {
-      field: 'id',
-      headerName: 'ID',
-      headerClassName: 'header-class',
-    },
     {
       field: 'url',
       headerClassName: 'header-class',
@@ -78,7 +75,7 @@ export const ScrapperContainer = ({ data }: Props) => {
       renderCell: (params) => {
         return (
           <ActionsButtons
-            disabled={params.row.status !== 'scrapped'}
+            disabled={params.row.status !== 'complete'}
             onDownload={() => handleDownload(params.row.url)}
           />
         )
@@ -114,7 +111,10 @@ export const ScrapperContainer = ({ data }: Props) => {
           + Agregar URL
         </HackerButton>
       </Stack>
-      <HackerDataGrid columns={columns} data={data} />
+      <HackerDataGrid
+        columns={columns}
+        data={data.map((item) => ({ ...item, id: item.url }))}
+      />
       <Box height={8} />
       <AddUrl currentModal={openModal} onClose={() => setOpenModal('')} />
     </Stack>
