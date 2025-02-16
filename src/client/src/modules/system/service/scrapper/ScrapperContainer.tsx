@@ -111,7 +111,10 @@ export const ScrapperContainer = ({ data }: Props) => {
           + Agregar URL
         </HackerButton>
       </Stack>
-      <HackerDataGrid columns={columns} data={data} />
+      <HackerDataGrid
+        columns={columns}
+        data={data.map((item) => ({ ...item, id: item.url }))}
+      />
       <Box height={8} />
       <AddUrl currentModal={openModal} onClose={() => setOpenModal('')} />
     </Stack>
