@@ -46,11 +46,11 @@ func (s *Server) HelloWorldHandler(c *gin.Context) {
 }
 
 func (s *Server) healthHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, s.db.Health())
+	c.JSON(http.StatusOK, s.node.Scraper.DB.Health())
 }
 
 func (s *Server) getTasksHandler(c *gin.Context) {
-	tasks, err := s.db.GetTasks()
+	tasks, err := s.node.Scraper.DB.GetTasks()
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -75,7 +75,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"statusCode": http.StatusInternalServerError,
+			"statusCode": http.StatusBadRequest,
 			"status":     "error",
 			"message":    "An error occurred while creating the task",
 		})
@@ -83,7 +83,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 	}
 
 	// Create task in DB
-	taskID, err := s.db.CreateTask(models.TaskType{
+	taskID, err := s.node.Scraper.DB.CreateTask(models.TaskType{
 		URL: req.URL,
 	})
 
@@ -97,7 +97,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		return
 	}
 	select {
-	case s.TaskQueue <- strconv.FormatUint(uint64(taskID), 10):
+	case s.node.Scraper.TaskQueue <- strconv.FormatUint(uint64(taskID), 10):
 		c.JSON(http.StatusAccepted, gin.H{
 			"statusCode": http.StatusOK,
 			"status":     "success",
@@ -127,7 +127,7 @@ func (s *Server) getTaskByIDHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
 		return
 	}
-	task, err := s.db.GetTask(uint32(taskIDUint))
+	task, err := s.node.Scraper.DB.GetTask(uint32(taskIDUint))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
