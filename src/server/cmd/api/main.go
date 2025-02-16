@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"server/internal/chord"
+	"server/internal/multicast"
 	"server/internal/server"
 
 	"google.golang.org/grpc"
@@ -65,6 +66,8 @@ func main() {
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}
+
+	go multicast.MulticastAnnouncer()
 
 	// Wait for the graceful shutdown to complete
 	<-done
