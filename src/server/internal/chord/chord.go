@@ -2,6 +2,9 @@ package chord
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"net/rpc"
 	"os"
 	pb "server/internal/chord/chordpb"
 	"server/internal/scraper"
@@ -53,8 +56,23 @@ func NewNode() *RingNode {
 	}
 }
 
+func (n *RingNode) Discover(ctx context.Context) (*pb.DiscoveryResponse, error) {
+	log.Printf("Nodo %d: Recibido discover request", n.ID)
+
+	return &pb.DiscoveryResponse{
+		Id:      n.ID,
+		Address: n.Address,
+	}, nil
+}
+
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 	pb.RegisterChordServiceServer(grpcServer, n)
+
+	_, err := n.Lookup()
+	if err != nil {
+		fmt.Println(err)
+	}
+
 }
 
 func (n *RingNode) Notify(ctx context.Context, req *pb.NotifyRequest) (*pb.NotifyResponse, error) {
@@ -73,9 +91,30 @@ func (n *RingNode) Notify(ctx context.Context, req *pb.NotifyRequest) (*pb.Notif
 
 	return &pb.NotifyResponse{Updated: false}, nil
 }
+
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
 	return &pb.HealthResponse{
 		Id:      n.ID,
 		Address: n.Address,
 	}, nil
+}
+
+func (n *RingNode) Lookup() (string, error) {
+
+	for i := 1; i < 54; i++ {
+
+		node := fmt.Sprintf("10.0.11.2%d:50051", i)
+
+		client, err := rpc.Dial("tcp", node)
+		if err != nil {
+			continue
+		}
+		defer client.Close()
+
+		fmt.Println("Successor found: ", node)
+
+		return node, nil
+	}
+
+	return "", error(fmt.Errorf("no successor found"))
 }

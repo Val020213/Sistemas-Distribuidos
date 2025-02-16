@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChordService_Notify_FullMethodName = "/chord.ChordService/Notify"
-	ChordService_Health_FullMethodName = "/chord.ChordService/Health"
+	ChordService_Notify_FullMethodName    = "/chord.ChordService/Notify"
+	ChordService_Health_FullMethodName    = "/chord.ChordService/Health"
+	ChordService_Discovery_FullMethodName = "/chord.ChordService/Discovery"
 )
 
 // ChordServiceClient is the client API for ChordService service.
@@ -29,6 +30,7 @@ const (
 type ChordServiceClient interface {
 	Notify(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyResponse, error)
 	Health(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HealthResponse, error)
+	Discovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DiscoveryResponse, error)
 }
 
 type chordServiceClient struct {
@@ -59,12 +61,23 @@ func (c *chordServiceClient) Health(ctx context.Context, in *Empty, opts ...grpc
 	return out, nil
 }
 
+func (c *chordServiceClient) Discovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DiscoveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DiscoveryResponse)
+	err := c.cc.Invoke(ctx, ChordService_Discovery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChordServiceServer is the server API for ChordService service.
 // All implementations must embed UnimplementedChordServiceServer
 // for forward compatibility.
 type ChordServiceServer interface {
 	Notify(context.Context, *NotifyRequest) (*NotifyResponse, error)
 	Health(context.Context, *Empty) (*HealthResponse, error)
+	Discovery(context.Context, *Empty) (*DiscoveryResponse, error)
 	mustEmbedUnimplementedChordServiceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedChordServiceServer) Notify(context.Context, *NotifyRequest) (
 }
 func (UnimplementedChordServiceServer) Health(context.Context, *Empty) (*HealthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Health not implemented")
+}
+func (UnimplementedChordServiceServer) Discovery(context.Context, *Empty) (*DiscoveryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Discovery not implemented")
 }
 func (UnimplementedChordServiceServer) mustEmbedUnimplementedChordServiceServer() {}
 func (UnimplementedChordServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +154,24 @@ func _ChordService_Health_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChordService_Discovery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordServiceServer).Discovery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChordService_Discovery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordServiceServer).Discovery(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChordService_ServiceDesc is the grpc.ServiceDesc for ChordService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var ChordService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Health",
 			Handler:    _ChordService_Health_Handler,
+		},
+		{
+			MethodName: "Discovery",
+			Handler:    _ChordService_Discovery_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
