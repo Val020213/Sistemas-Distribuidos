@@ -28,7 +28,7 @@ func MulticastAnnouncer() {
 	defer conn.Close()
 
 	for {
-		message := fmt.Sprintf("GRPC_SERVER:%s", os.Getenv("IP_ADDRESS"))
+		message := fmt.Sprintf("Server IP: %s", os.Getenv("IP_ADDRESS"))
 		_, err := conn.Write([]byte(message))
 		if err != nil {
 			log.Printf("Error al enviar anuncio multicast: %v", err)
