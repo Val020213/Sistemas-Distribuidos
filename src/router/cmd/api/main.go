@@ -245,3 +245,158 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Todos los servidores fallaron: %v", errors)
 	http.Error(w, "Todos los servidores fallaron", http.StatusBadGateway)
 }
+
+/// REFACTOR PARA LUEGO
+
+// func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//     candidates, _ := filterServer()
+//     log.Printf("Handle request from %s to %s", r.RemoteAddr, r.URL.Path)
+
+//     if len(candidates) == 0 {
+//         http.Error(w, "No servers available", http.StatusServiceUnavailable)
+//         return
+//     }
+
+//     // 1. Configuración de timeouts
+//     ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+//     defer cancel()
+
+//     // 2. Selección de servidores con lógica de preferencia
+//     targetServers := selectServers(candidates, 3)
+
+//     // 3. Canal único para resultados
+//     resultChan := make(chan *serverResult, len(targetServers))
+
+//     // 4. Grupo de espera para todas las goroutines
+//     var wg sync.WaitGroup
+//     wg.Add(len(targetServers))
+
+//     for _, srv := range targetServers {
+//         go func(server string) {
+//             defer wg.Done()
+//             result := &serverResult{server: server}
+
+//             // 5. Validar dirección del servidor
+//             if !isValidServer(server) {
+//                 result.err = fmt.Errorf("dirección inválida: %s", server)
+//                 resultChan <- result
+//                 return
+//             }
+
+//             // 6. Crear cliente con timeout personalizado
+//             client := &http.Client{
+//                 Timeout: 10 * time.Second,
+//                 Transport: &http.Transport{
+//                     DisableCompression:  false,
+//                     MaxIdleConnsPerHost: 10,
+//                 },
+//             }
+
+//             // 7. Construir request de manera segura
+//             req, err := http.NewRequestWithContext(ctx, r.Method, fmt.Sprintf("http://%s%s", server, r.URL.Path), r.Body)
+//             if err != nil {
+//                 result.err = err
+//                 resultChan <- result
+//                 return
+//             }
+
+//             // 8. Copiar headers importantes
+//             copyHeaders(req.Header, r.Header)
+
+//             resp, err := client.Do(req)
+//             if err != nil {
+//                 result.err = fmt.Errorf("error de conexión: %w", err)
+//                 resultChan <- result
+//                 return
+//             }
+//             defer resp.Body.Close()
+
+//             // 9. Leer solo si es respuesta válida
+//             if resp.StatusCode < 500 {
+//                 result.resp = resp
+//                 var buf bytes.Buffer
+//                 tee := io.TeeReader(resp.Body, &buf)
+
+//                 // 10. Leer y mantener buffer para posibles reintentos
+//                 body, _ := io.ReadAll(tee)
+//                 result.body = body
+//                 result.headers = resp.Header
+//                 result.statusCode = resp.StatusCode
+
+//                 // 11. Reconstruir body para posibles lecturas
+//                 resp.Body = io.NopCloser(&buf)
+//             } else {
+//                 result.err = fmt.Errorf("código de error: %d", resp.StatusCode)
+//             }
+
+//             resultChan <- result
+//         }(srv)
+//     }
+
+//     // 12. Esperar resultados en goroutine separada
+//     go func() {
+//         wg.Wait()
+//         close(resultChan)
+//     }()
+
+//     // 13. Seleccionar primera respuesta exitosa
+//     var bestResponse *serverResult
+//     for result := range resultChan {
+//         if result.resp != nil && bestResponse == nil {
+//             bestResponse = result
+//             cancel() // Cancelar otras solicitudes
+//         } else if result.err != nil {
+//             log.Printf("Error del servidor %s: %v", result.server, result.err)
+//         }
+//     }
+
+//     // 14. Escribir respuesta
+//     if bestResponse != nil {
+//         copyHeaders(w.Header(), bestResponse.headers)
+//         w.WriteHeader(bestResponse.statusCode)
+//         w.Write(bestResponse.body)
+//         return
+//     }
+
+//     // 15. Manejo de errores detallado
+//     log.Printf("All servers failed for %s", r.URL.Path)
+//     http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+// }
+
+// // Estructura para manejar resultados
+// type serverResult struct {
+//     server     string
+//     resp       *http.Response
+//     body       []byte
+//     headers    http.Header
+//     statusCode int
+//     err        error
+// }
+
+// // Función para copiar headers
+// func copyHeaders(dst, src http.Header) {
+//     for k, vv := range src {
+//         for _, v := range vv {
+//             dst.Add(k, v)
+//         }
+//     }
+// }
+
+// // Validación de servidores
+// func isValidServer(addr string) bool {
+//     host, port, err := net.SplitHostPort(addr)
+//     if err != nil || port == "" {
+//         return false
+//     }
+//     return net.ParseIP(host) != nil || isValidHostname(host)
+// }
+
+// // Lógica mejorada de selección de servidores
+// func selectServers(servers []string, max int) []string {
+//     if len(servers) <= max {
+//         return servers
+//     }
+
+//     // Implementar lógica de selección inteligente
+//     return servers[:max]
+// }
