@@ -49,6 +49,7 @@ echo "New instances will be created starting from $START_INSTANCE to $END_INSTAN
 for ((i = START_INSTANCE; i <= END_INSTANCE; i++)); do
     backendPort=$((8080 + i))
     mongoPort=$((27017 + i))
+    gRPCPort=$((50050 + i))
     echo "Creating mongo instance $i..."
     docker run -d --restart unless-stopped --name mongo_bp$i \
     -p "$mongoPort":27017 \
@@ -72,7 +73,9 @@ for ((i = START_INSTANCE; i <= END_INSTANCE; i++)); do
     echo "Creating backend instance $i..."
     docker run -d --restart unless-stopped --name backend$i \
         -p "$backendPort":8080 \
+        -p "$gRPCPort":50051 \
         -v "$PWD/server":/app \
+        -v go-mod-cache:/go/pkg/mod \
         --network scrapper-server-network \
         --ip 10.0.10.1$i \
         --cap-add NET_ADMIN \

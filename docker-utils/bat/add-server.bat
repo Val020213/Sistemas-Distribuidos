@@ -53,11 +53,12 @@ echo New instances will be created starting from %START_INSTANCE% to %END_INSTAN
 for /L %%i in (%START_INSTANCE%,1,%END_INSTANCE%) do (
     set /a backendPort=8080+%%i
     set /a mongoPort=27017+%%i
+    set /a grpcPort=50050+%%i
     echo Creating mongo instance %%i...
     docker run -d --restart unless-stopped --name mongo_bp%%i -p !mongoPort!:27017 -v mongo_volume_bp%%i:/data/db --network scrapper-server-network --ip 10.0.10.2%%i --network-alias mongo%%i -e MONGO_INITDB_ROOT_USERNAME=melkey -e MONGO_INITDB_ROOT_PASSWORD=password1234 -e MONGO_INITDB_DATABASE=mongo_bp --health-cmd "mongosh --eval ""db.adminCommand('ping')""" --health-interval 5s --health-timeout 5s --health-retries 3 --health-start-period 15s mongo:latest mongod --quiet --logpath /dev/null
 
     echo Creating backend instance %%i...
-    docker run -d --restart unless-stopped --name backend%%i -p !backendPort!:8080 -v "%cd%\server":/app --network scrapper-server-network --ip 10.0.10.1%%i --cap-add NET_ADMIN --privileged -e BLUEPRINT_DB_HOST=mongo%%i -e BLUEPRINT_DB_PORT=27017 -e BLUEPRINT_DB_USER=melkey -e BLUEPRINT_DB_PASSWORD=password1234 -e BLUEPRINT_DB_NAME=mongo_bp -e PORT=8080 -e RPC_PORT=50051 -e IP_ADDRESS=10.0.10.1%%i -e TASK_QUEUE_SIZE=10 -e NUM_WORKERS=5 scrapper-backend-image:latest
+    docker run -d --restart unless-stopped --name backend%%i -p !backendPort!:8080 -p !grpcPort!:50051 -v "%cd%\server":/app  -v "go-mod-cache:/go/pkg/mod" --network scrapper-server-network --ip 10.0.10.1%%i --cap-add NET_ADMIN --privileged -e BLUEPRINT_DB_HOST=mongo%%i -e BLUEPRINT_DB_PORT=27017 -e BLUEPRINT_DB_USER=melkey -e BLUEPRINT_DB_PASSWORD=password1234 -e BLUEPRINT_DB_NAME=mongo_bp -e PORT=8080 -e RPC_PORT=50051 -e IP_ADDRESS=10.0.10.1%%i -e TASK_QUEUE_SIZE=10 -e NUM_WORKERS=5 scrapper-backend-image:latest
 
 )
 

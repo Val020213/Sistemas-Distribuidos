@@ -4,14 +4,16 @@ WORKDIR /app
 
 EXPOSE ${PORT}
 
-RUN apk add --no-cache iproute2 iptables iputils
+EXPOSE ${RPC_PORT}
 
-COPY server.sh /app
+RUN apk add --no-cache iproute2 iptables iputils
 
 COPY go.mod go.sum ./
 
 RUN go mod download
 
+COPY . .
+
 RUN chmod +x /app/server.sh
 
-CMD ["/bin/sh", "-c", "/app/server.sh && ping 10.0.10.2"]
+CMD ["/bin/sh", "-c", "/app/server.sh"]
