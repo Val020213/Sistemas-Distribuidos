@@ -1,5 +1,4 @@
 export type UrlDataType = {
-  id: number | string
   url: string
   status: 'complete' | 'in_progress' | 'error'
   content?: string

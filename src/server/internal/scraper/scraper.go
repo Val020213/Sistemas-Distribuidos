@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -46,17 +45,11 @@ func (s *Scraper) worker() {
 		}
 	}()
 
-	for taskID := range s.TaskQueue {
+	for taskUrl := range s.TaskQueue {
 
-		taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
+		task, err := s.DB.GetTask(taskUrl)
 		if err != nil {
-			log.Printf("Invalid task ID format %s: %v", taskID, err)
-			continue
-		}
-
-		task, err := s.DB.GetTask(uint32(taskIDUint))
-		if err != nil {
-			log.Printf("Error fetching task %d: %v", taskIDUint, err)
+			log.Printf("Error fetching task %s: %v", taskUrl, err)
 			continue
 		}
 
@@ -71,7 +64,7 @@ func (s *Scraper) worker() {
 		}
 
 		if err := s.DB.UpdateTask(task); err != nil {
-			log.Printf("Error updating task %s: %v", taskID, err)
+			log.Printf("Error updating task %s: %v", taskUrl, err)
 		}
 	}
 }

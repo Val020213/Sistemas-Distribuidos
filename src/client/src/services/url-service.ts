@@ -30,10 +30,11 @@ export async function listUrlService(): Promise<
 }
 
 export async function downloadUrlService(
-  id: string
+  url: string
 ): Promise<HackerApiResponse<UrlDataType>> {
-  const response = await fetch(`${backendRoutes.download.replace(':id', id)}`, {
-    method: 'GET',
+  const response = await fetch(backendRoutes.download, {
+    method: 'POST',
+    body: JSON.stringify({ url: url }),
     next: {
       tags: [tagsRoutes.download],
     },

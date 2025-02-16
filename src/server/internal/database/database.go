@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"server/internal/models"
-	"server/internal/utils"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -17,10 +16,10 @@ import (
 
 type Service interface {
 	Health() map[string]string
-	CreateTask(task models.TaskType) (uint32, error)
+	CreateTask(task models.TaskType) (string, error)
 	UpdateTask(task models.TaskType) error
 	GetTasks() ([]models.TaskType, error)
-	GetTask(id uint32) (models.TaskType, error)
+	GetTask(url string) (models.TaskType, error)
 }
 
 type service struct {
@@ -71,7 +70,7 @@ func (s *service) Health() map[string]string {
 
 // Task Repository
 
-func (s *service) CreateTask(task models.TaskType) (uint32, error) {
+func (s *service) CreateTask(task models.TaskType) (string, error) {
 	// Set a context with timeout for the operation.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -81,19 +80,15 @@ func (s *service) CreateTask(task models.TaskType) (uint32, error) {
 	task.UpdatedAt = now
 	task.Status = models.StatusInProgress
 
-	if task.ID == 0 {
-		task.ID = utils.GenerateUniqueHashUrl(task.URL)
-	}
-
 	collection := s.db.Database(database).Collection("tasks")
 
 	filter := bson.M{
-		"_id": task.ID,
+		"url": task.URL,
 		"status": bson.M{
 			"$in": []interface{}{models.StatusError, models.StatusComplete},
 		},
 	}
-	fmt.Println("filter result", filter)
+
 	update := bson.M{
 		"$set": bson.M{
 			"content":    task.Content,
@@ -104,21 +99,21 @@ func (s *service) CreateTask(task models.TaskType) (uint32, error) {
 
 	updateResult, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return 0, fmt.Errorf("failed to update existing task: %v", err)
+		return "", fmt.Errorf("failed to update existing task: %v", err)
 	}
 
 	fmt.Println("update result", updateResult)
 	if updateResult.MatchedCount > 0 {
-		return task.ID, nil
+		return task.URL, nil
 	}
 
 	fmt.Println("Inserting...")
 	_, err = collection.InsertOne(ctx, task)
 	if err != nil {
-		return 0, fmt.Errorf("failed to insert task: %v", err)
+		return "", fmt.Errorf("failed to insert task: %v", err)
 	}
 
-	return task.ID, nil
+	return task.URL, nil
 }
 
 func (s *service) UpdateTask(task models.TaskType) error {
@@ -127,7 +122,8 @@ func (s *service) UpdateTask(task models.TaskType) error {
 
 	collection := s.db.Database(database).Collection("tasks")
 
-	filter := bson.M{"_id": task.ID}
+	filter := bson.M{"url": task.URL}
+
 	update := bson.M{"$set": bson.M{
 		"status":     task.Status,
 		"content":    task.Content,
@@ -158,13 +154,13 @@ func (s *service) GetTasks() ([]models.TaskType, error) {
 	return tasks, nil
 }
 
-func (s *service) GetTask(id uint32) (models.TaskType, error) {
+func (s *service) GetTask(url string) (models.TaskType, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	collection := s.db.Database(database).Collection("tasks")
 
-	filter := bson.M{"_id": id}
+	filter := bson.M{"url": url}
 
 	var task models.TaskType
 	err := collection.FindOne(ctx, filter).Decode(&task)

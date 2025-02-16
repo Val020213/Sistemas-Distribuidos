@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"server/internal/models"
-	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -31,7 +30,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.POST("/tasks", s.createTaskHandler)
 
-	r.GET("/task/:id", s.getTaskByIDHandler)
+	r.POST("/task", s.getTaskByIDHandler)
 
 	// <<<TASKS>>> END
 
@@ -83,7 +82,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 	}
 
 	// Create task in DB
-	taskID, err := s.node.Scraper.DB.CreateTask(models.TaskType{
+	taskUrl, err := s.node.Scraper.DB.CreateTask(models.TaskType{
 		URL: req.URL,
 	})
 
@@ -97,16 +96,16 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		return
 	}
 	select {
-	case s.node.Scraper.TaskQueue <- strconv.FormatUint(uint64(taskID), 10):
+	case s.node.Scraper.TaskQueue <- taskUrl:
 		c.JSON(http.StatusAccepted, gin.H{
 			"statusCode": http.StatusOK,
 			"status":     "success",
 			"message":    "Task queued",
-			"data":       taskID,
+			"data":       taskUrl,
 		})
 
 	default:
-		log.Printf("Queue full. Task ID: %v", taskID)
+		log.Printf("Queue full. Task ID: %v", taskUrl)
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"statusCode": http.StatusServiceUnavailable,
 			"status":     "error",
@@ -116,18 +115,21 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 }
 
 func (s *Server) getTaskByIDHandler(c *gin.Context) {
-	taskID := c.Param("id")
-	if taskID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id path parameter is required"})
+	var req struct {
+		URL string `json:"url" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"statusCode": http.StatusBadRequest,
+			"status":     "error",
+			"message":    "An error occurred while getting the task",
+		})
 		return
 	}
 
-	taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
-		return
-	}
-	task, err := s.node.Scraper.DB.GetTask(uint32(taskIDUint))
+	task, err := s.node.Scraper.DB.GetTask(req.URL)
+
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
