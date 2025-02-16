@@ -66,6 +66,9 @@ func (n *RingNode) Discover(ctx context.Context) (*pb.DiscoveryResponse, error) 
 }
 
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
+
+	fmt.Println("RPC Server started")
+
 	pb.RegisterChordServiceServer(grpcServer, n)
 
 	_, err := n.Lookup()
