@@ -14,7 +14,7 @@ const (
 	multicastInterval = 5 * time.Second
 )
 
-// multicastAnnouncer envía periódicamente un anuncio vía UDP multicast.
+// Periodically sends a multicast message with the server's IP address
 func MulticastAnnouncer() {
 	addr, err := net.ResolveUDPAddr("udp4", multicastAddr)
 	if err != nil {
