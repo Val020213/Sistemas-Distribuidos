@@ -59,22 +59,13 @@ func NewNode() *RingNode {
 	}
 }
 
-func (n *RingNode) Discover(ctx context.Context) (*pb.DiscoveryResponse, error) {
-	log.Printf("Nodo %d: Recibido discover request", n.ID)
-
-	return &pb.DiscoveryResponse{
-		Id:      n.ID,
-		Address: n.Address,
-	}, nil
-}
-
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 
 	fmt.Println("RPC Server started")
 
 	pb.RegisterChordServiceServer(grpcServer, n)
 
-	address, err := n.Lookup()
+	address, err := n.Discover()
 
 	fmt.Println("Address: ", address)
 	fmt.Println("Error: ", err)
@@ -105,7 +96,7 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 	}, nil
 }
 
-func (n *RingNode) Lookup() (string, error) {
+func (n *RingNode) Discover() (string, error) {
 
 	addr, err := net.ResolveUDPAddr("udp4", multicastAddr)
 	if err != nil {
