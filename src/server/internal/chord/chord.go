@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	pb "server/internal/chord/chordpb"
 	"server/internal/scraper"
@@ -72,7 +73,7 @@ func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 
 }
 
-func (n *RingNode) Notify(ctx context.Context, req *pb.NotifyRequest) (*pb.NotifyResponse, error) {
+func (n *RingNode) Notify(ctx context.Context, req *pb.Node) (*pb.Succesfull, error) {
 	newPredecessor := &RemoteNode{
 		ID:      req.GetId(),
 		Address: req.GetAddress(),
@@ -83,10 +84,10 @@ func (n *RingNode) Notify(ctx context.Context, req *pb.NotifyRequest) (*pb.Notif
 
 	if n.Predecessor == nil || utils.Between(newPredecessor.ID, n.Predecessor.ID, n.ID) {
 		n.Predecessor = newPredecessor
-		return &pb.NotifyResponse{Updated: true}, nil
+		return &pb.Succesfull{succesfull: true}, nil
 	}
 
-	return &pb.NotifyResponse{Updated: false}, nil
+	return &pb.Succesfull{succesfull: false}, nil
 }
 
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
@@ -94,6 +95,25 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 		Id:      n.ID,
 		Address: n.Address,
 	}, nil
+}
+
+func (n *RingNode) FindSuccessor(ctx context.Context, key *pb.KeyRequest) (*pb.Node, error) {
+	
+}
+
+func (n *RingNode) joinNetwork() (string, error) {
+
+	addr, _ := n.Discover()
+
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return n.joinNetwork()
+	}
+	defer conn.Close()
+
+	client := pb.NewChordServiceClient(conn)
+	succ, err := client.
+
 }
 
 func (n *RingNode) Discover() (string, error) {
