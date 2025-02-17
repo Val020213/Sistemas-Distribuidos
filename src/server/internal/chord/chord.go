@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/rpc"
 	"os"
-	pb "server/internal/chord/chordpb"
-	"server/internal/scraper"
+	"time"
 
-	"server/internal/utils"
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	pb "server/internal/chord/chordpb"
+	"server/internal/scraper"
+	"server/internal/utils"
 )
 
 type RingNode struct {
@@ -75,7 +78,6 @@ func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 }
 
 func (n *RingNode) Notify(ctx context.Context, req *pb.NotifyRequest) (*pb.NotifyResponse, error) {
@@ -104,20 +106,57 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 
 func (n *RingNode) Lookup() (string, error) {
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resultChan := make(chan string, 1)
+	errChan := make(chan error)
+
+	var wg sync.WaitGroup
+
 	for i := 1; i < 54; i++ {
+		addr := fmt.Sprintf("10.0.11.2%d:50051", i)
 
-		node := fmt.Sprintf("10.0.11.2%d:50051", i)
+		wg.Add(1)
+		go func(a string) {
+			defer wg.Done()
+			conn, err := grpc.NewClient(a, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-		client, err := rpc.Dial("tcp", node)
-		if err != nil {
-			continue
-		}
-		defer client.Close()
+			if err != nil {
+				errChan <- err
+				return
+			}
 
-		fmt.Println("Successor found: ", node)
+			defer conn.Close()
 
-		return node, nil
+			// Health check	service from gRPC
+			healthClient := healthpb.NewHealthClient(conn)
+			resp, err := healthClient.Check(ctx, &healthpb.HealthCheckRequest{Service: "chord"})
+
+			if err == nil && resp.GetStatus() == healthpb.HealthCheckResponse_SERVING {
+				n.mu.Lock()
+				defer n.mu.Unlock()
+
+				select {
+				case resultChan <- a:
+					cancel()
+				default:
+				}
+			}
+
+		}(addr)
 	}
 
-	return "", error(fmt.Errorf("no successor found"))
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	select {
+	case addr := <-resultChan:
+		return addr, nil
+	case <-ctx.Done():
+		return "", fmt.Errorf("no hay nodos disponibles")
+	}
+
 }
