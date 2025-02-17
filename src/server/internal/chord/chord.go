@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"time"
 
 	"sync"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	pb "server/internal/chord/chordpb"
 	"server/internal/scraper"
@@ -39,9 +38,10 @@ type RemoteNode struct {
 }
 
 var (
-	grpcAddr = os.Getenv("IP_ADDRESS")
-	grpcPort = os.Getenv("RPC_PORT")
-	mBits    = utils.GetEnvAsInt("CHORD_BITS", 8)
+	grpcAddr      = os.Getenv("IP_ADDRESS")
+	grpcPort      = os.Getenv("RPC_PORT")
+	mBits         = utils.GetEnvAsInt("CHORD_BITS", 8)
+	multicastAddr = "224.0.0.1:9999"
 )
 
 func NewNode() *RingNode {
@@ -74,10 +74,11 @@ func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 
 	pb.RegisterChordServiceServer(grpcServer, n)
 
-	_, err := n.Lookup()
-	if err != nil {
-		fmt.Println(err)
-	}
+	address, err := n.Lookup()
+
+	fmt.Println("Address: ", address)
+	fmt.Println("Error: ", err)
+
 }
 
 func (n *RingNode) Notify(ctx context.Context, req *pb.NotifyRequest) (*pb.NotifyResponse, error) {
@@ -106,57 +107,39 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 
 func (n *RingNode) Lookup() (string, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	resultChan := make(chan string, 1)
-	errChan := make(chan error)
-
-	var wg sync.WaitGroup
-
-	for i := 1; i < 54; i++ {
-		addr := fmt.Sprintf("10.0.11.2%d:50051", i)
-
-		wg.Add(1)
-		go func(a string) {
-			defer wg.Done()
-			conn, err := grpc.NewClient(a, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-			if err != nil {
-				errChan <- err
-				return
-			}
-
-			defer conn.Close()
-
-			// Health check	service from gRPC
-			healthClient := healthpb.NewHealthClient(conn)
-			resp, err := healthClient.Check(ctx, &healthpb.HealthCheckRequest{Service: "chord"})
-
-			if err == nil && resp.GetStatus() == healthpb.HealthCheckResponse_SERVING {
-				n.mu.Lock()
-				defer n.mu.Unlock()
-
-				select {
-				case resultChan <- a:
-					cancel()
-				default:
-				}
-			}
-
-		}(addr)
+	addr, err := net.ResolveUDPAddr("udp4", multicastAddr)
+	if err != nil {
+		log.Fatalf("Error resolving multicast address: %v", err)
 	}
 
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-
-	select {
-	case addr := <-resultChan:
-		return addr, nil
-	case <-ctx.Done():
-		return "", fmt.Errorf("no hay nodos disponibles")
+	conn, err := net.ListenMulticastUDP("udp4", nil, addr)
+	if err != nil {
+		log.Fatalf("Error listening on multicast: %v", err)
 	}
+	defer conn.Close()
 
+	// Buffer para recibir mensajes.
+	buf := make([]byte, 1024)
+	// Establece un tiempo límite de lectura de 6 segundos.
+	deadline := time.Now().Add(6 * time.Second)
+	conn.SetReadDeadline(deadline)
+
+	// Se queda esperando hasta recibir un mensaje o agotar el tiempo.
+	for {
+		nbytes, src, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			// Si se alcanza el tiempo límite, se asigna a si mismo como responsable.
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				return n.Address, nil
+			}
+			return "", fmt.Errorf("error leyendo desde multicast: %v", err)
+		}
+		// Si el mensaje recibido proviene de un nodo distinto (comparando direcciones)
+		if src.String() != n.Address {
+			// Se asume que el mensaje contiene el identificador del nodo responsable.
+			responsable := string(buf[:nbytes])
+			return responsable, nil
+		}
+		// Si el mensaje es de si mismo, continúa esperando.
+	}
 }
