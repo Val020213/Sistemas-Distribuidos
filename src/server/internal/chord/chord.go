@@ -2,6 +2,7 @@ package chord
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -19,7 +20,7 @@ import (
 )
 
 type RingNode struct {
-	ID          uint64            // Node's ID (computed from its address)
+	Id          uint64            // Node's Id (computed from its address)
 	Address     string            // Host
 	Port        string            // Port
 	Successor   *RemoteNode       // Immediate successor in the ring
@@ -34,7 +35,7 @@ type RingNode struct {
 }
 
 type RemoteNode struct {
-	ID      uint64
+	Id      uint64
 	Address string
 }
 
@@ -47,10 +48,10 @@ var (
 
 func NewNode() *RingNode {
 
-	id := utils.ChordHash(grpcAddr, mBits)
+	Id := utils.ChordHash(grpcAddr, mBits)
 	scraper := scraper.NewScraper()
 	return &RingNode{
-		ID:      id,
+		Id:      Id,
 		Address: grpcAddr,
 		Port:    grpcPort,
 		m:       mBits,
@@ -73,32 +74,46 @@ func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 
 }
 
-func (n *RingNode) Notify(ctx context.Context, req *pb.Node) (*pb.Succesfull, error) {
-	newPredecessor := &RemoteNode{
-		ID:      req.GetId(),
-		Address: req.GetAddress(),
-	}
-
+func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Succesfull, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	if n.Predecessor == nil || utils.Between(newPredecessor.ID, n.Predecessor.ID, n.ID) {
-		n.Predecessor = newPredecessor
-		return &pb.Succesfull{succesfull: true}, nil
+	if n.Predecessor == nil || utils.Between(node.Id, n.Predecessor.Id, n.Id) {
+		n.Predecessor = &RemoteNode{Id: node.Id, Address: node.Address}
+		return &pb.Succesfull{Succesfull: true}, nil
 	}
 
-	return &pb.Succesfull{succesfull: false}, nil
+	return &pb.Succesfull{Succesfull: false}, nil
 }
 
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
 	return &pb.HealthResponse{
-		Id:      n.ID,
+		Id:      n.Id,
 		Address: n.Address,
 	}, nil
 }
 
 func (n *RingNode) FindSuccessor(ctx context.Context, key *pb.KeyRequest) (*pb.Node, error) {
-	
+
+	if utils.Between(n.Id, key, n.Successor.Id) {
+		return &pb.Node{Id: n.Successor.Id, Address: n.Successor.Address}, nil
+	}
+
+	nextNode := n.closestPrecedingNode(key)
+
+	conn, err := grpc.NewClient(nextNode.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := pb.NewChordServiceClient(conn)
+	return client.FindSuccessor(ctx, key)
+
+}
+
+func (n *RingNode) closestPrecedingNode(key string) {
+
 }
 
 func (n *RingNode) joinNetwork() (string, error) {
@@ -112,8 +127,15 @@ func (n *RingNode) joinNetwork() (string, error) {
 	defer conn.Close()
 
 	client := pb.NewChordServiceClient(conn)
-	succ, err := client.
+	succ, err := client.FindSuccessor(context.Background(), &pb.KeyRequest{Key: n.Id})
 
+	if err != nil {
+		return "", errors.New("No se encontraron nodos para enlazar")
+	}
+
+	n.Successor = &RemoteNode{Id: succ.Id, Address: succ.Address}
+	client.Notify(context.Background(), &pb.Node{Id: n.Id, Address: n.Address})
+	return n.Successor.Address, nil
 }
 
 func (n *RingNode) Discover() (string, error) {
@@ -145,9 +167,9 @@ func (n *RingNode) Discover() (string, error) {
 			}
 			return "", fmt.Errorf("error leyendo desde multicast: %v", err)
 		}
-		// Si el mensaje recibido proviene de un nodo distinto (comparando direcciones)
+		// Si el mensaje recibIdo proviene de un nodo distinto (comparando direcciones)
 		if src.String() != n.Address {
-			// Se asume que el mensaje contiene el identificador del nodo responsable.
+			// Se asume que el mensaje contiene el Identificador del nodo responsable.
 			responsable := string(buf[:nbytes])
 			return responsable, nil
 		}
