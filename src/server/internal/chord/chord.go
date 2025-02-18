@@ -62,24 +62,22 @@ func NewNode() *RingNode {
 }
 
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
-
-	fmt.Println("RPC Server started")
-
+	fmt.Println("Starting gRPC Server")
 	pb.RegisterChordServiceServer(grpcServer, n)
+	fmt.Println("Starting gRPC Server on ", n.Address)
 
-	address, err := n.Discover()
-
-	fmt.Println("Address: ", address)
-	fmt.Println("Error: ", err)
+	n.joinNetwork()
 
 }
 
 func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Succesfull, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	fmt.Println("Notified by ", node.Address)
 
 	if n.Predecessor == nil || utils.Between(node.Id, n.Predecessor.Id, n.Id) {
 		n.Predecessor = &RemoteNode{Id: node.Id, Address: node.Address}
+		fmt.Println("Updated predecessor to ", node.Address)
 		return &pb.Succesfull{Succesfull: true}, nil
 	}
 
@@ -87,6 +85,7 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Succesfull, e
 }
 
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
+	fmt.Printf("Debugging node:\naddr: %s\nid: %d\nsucc: %s\npred: %s\nfinger table: %v\n", n.Address, n.Id, n.Successor.Address, n.Predecessor.Address, n.Finger)
 	return &pb.HealthResponse{
 		Id:      n.Id,
 		Address: n.Address,
@@ -94,24 +93,28 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 }
 
 func (n *RingNode) FindSuccessor(ctx context.Context, req *pb.KeyRequest) (*pb.Node, error) {
+	fmt.Println("Finding successor for ", req.Key)
 
 	key := req.Key
 
 	if utils.Between(n.Id, key, n.Successor.Id) {
+		fmt.Println("Successor found")
 		return &pb.Node{Id: n.Successor.Id, Address: n.Successor.Address}, nil
 	}
 
-	nextNode, err := n.closestPrecedingNode(key)
+	fmt.Println("Finding closest preceding node")
+	nextNode, _ := n.closestPrecedingNode(key)
 
 	conn, err := grpc.NewClient(nextNode.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
+		fmt.Println("Error connecting to next node: ", err)
 		return nil, err
 	}
 	defer conn.Close()
 
 	client := pb.NewChordServiceClient(conn)
+	fmt.Println("Asking next node for successor")
 	return client.FindSuccessor(ctx, req)
-
 }
 
 func (n *RingNode) closestPrecedingNode(key uint64) (*pb.Node, error) {
@@ -133,10 +136,13 @@ func (n *RingNode) closestPrecedingNode(key uint64) (*pb.Node, error) {
 
 func (n *RingNode) joinNetwork() (string, error) {
 
+	fmt.Println("Joining network...")
+
 	addr, _ := n.Discover()
 
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%s", addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
+		fmt.Println("Error connecting to node: ", err)
 		return n.joinNetwork()
 	}
 	defer conn.Close()
@@ -145,15 +151,19 @@ func (n *RingNode) joinNetwork() (string, error) {
 	succ, err := client.FindSuccessor(context.Background(), &pb.KeyRequest{Key: n.Id})
 
 	if err != nil {
+		fmt.Println("Error en la conexión: ", err)
 		return "", errors.New("no se encontraron nodos para enlazar")
 	}
 
+	fmt.Println("Successor encontrado en ", succ.Address)
 	n.Successor = &RemoteNode{Id: succ.Id, Address: succ.Address}
+	fmt.Println("Notifying successor")
 	client.Notify(context.Background(), &pb.Node{Id: n.Id, Address: n.Address})
 	return n.Successor.Address, nil
 }
 
 func (n *RingNode) Discover() (string, error) {
+	fmt.Println("Discovering network...")
 
 	addr, err := net.ResolveUDPAddr("udp4", multicastAddr)
 	if err != nil {
@@ -166,28 +176,25 @@ func (n *RingNode) Discover() (string, error) {
 	}
 	defer conn.Close()
 
-	// Buffer para recibir mensajes.
 	buf := make([]byte, 1024)
-	// Establece un tiempo límite de lectura de 6 segundos.
 	deadline := time.Now().Add(6 * time.Second)
 	conn.SetReadDeadline(deadline)
 
-	// Se queda esperando hasta recibir un mensaje o agotar el tiempo.
 	for {
 		nbytes, src, err := conn.ReadFromUDP(buf)
+
 		if err != nil {
-			// Si se alcanza el tiempo límite, se asigna a si mismo como responsable.
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				fmt.Println("Timeout, no se encontraron nodos")
 				return n.Address, nil
 			}
 			return "", fmt.Errorf("error leyendo desde multicast: %v", err)
 		}
-		// Si el mensaje recibIdo proviene de un nodo distinto (comparando direcciones)
+
 		if src.String() != n.Address {
-			// Se asume que el mensaje contiene el Identificador del nodo responsable.
+			fmt.Printf("Encontrado nodo en %s\n", src.String())
 			responsable := string(buf[:nbytes])
 			return responsable, nil
 		}
-		// Si el mensaje es de si mismo, continúa esperando.
 	}
 }
