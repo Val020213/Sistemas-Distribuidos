@@ -93,13 +93,15 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 	}, nil
 }
 
-func (n *RingNode) FindSuccessor(ctx context.Context, key *pb.KeyRequest) (*pb.Node, error) {
+func (n *RingNode) FindSuccessor(ctx context.Context, req *pb.KeyRequest) (*pb.Node, error) {
+
+	key := req.Key
 
 	if utils.Between(n.Id, key, n.Successor.Id) {
 		return &pb.Node{Id: n.Successor.Id, Address: n.Successor.Address}, nil
 	}
 
-	nextNode := n.closestPrecedingNode(key)
+	nextNode, err := n.closestPrecedingNode(key)
 
 	conn, err := grpc.NewClient(nextNode.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -108,12 +110,25 @@ func (n *RingNode) FindSuccessor(ctx context.Context, key *pb.KeyRequest) (*pb.N
 	defer conn.Close()
 
 	client := pb.NewChordServiceClient(conn)
-	return client.FindSuccessor(ctx, key)
+	return client.FindSuccessor(ctx, req)
 
 }
 
-func (n *RingNode) closestPrecedingNode(key string) {
+func (n *RingNode) closestPrecedingNode(key uint64) (*pb.Node, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
+	for i := len(n.Finger) - 1; i >= 0; i-- {
+		if n.Finger[i] == nil {
+			continue
+		}
+
+		if utils.Between(n.Finger[i].Id, n.Id, key) {
+			return &pb.Node{Id: n.Finger[i].Id, Address: n.Finger[i].Address}, nil
+		}
+	}
+
+	return &pb.Node{Id: n.Successor.Id, Address: n.Successor.Address}, nil
 }
 
 func (n *RingNode) joinNetwork() (string, error) {
@@ -130,7 +145,7 @@ func (n *RingNode) joinNetwork() (string, error) {
 	succ, err := client.FindSuccessor(context.Background(), &pb.KeyRequest{Key: n.Id})
 
 	if err != nil {
-		return "", errors.New("No se encontraron nodos para enlazar")
+		return "", errors.New("no se encontraron nodos para enlazar")
 	}
 
 	n.Successor = &RemoteNode{Id: succ.Id, Address: succ.Address}
