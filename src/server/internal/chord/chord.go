@@ -64,7 +64,7 @@ func NewNode() *RingNode {
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 	fmt.Println("Starting gRPC Server")
 	pb.RegisterChordServiceServer(grpcServer, n)
-	fmt.Println("Starting gRPC Server on ", n.Address)
+	fmt.Println("Starting gRPC Server on ", n.Address, ":", n.Port)
 
 	n.joinNetwork()
 
@@ -139,7 +139,9 @@ func (n *RingNode) joinNetwork() (string, error) {
 	fmt.Println("Joining network...")
 
 	addr, _ := n.Discover()
-
+	fmt.Println("Discovered node ", addr)
+	addr = utils.IpAddress(addr)
+	fmt.Println("Connecting to node ", addr, ":", grpcPort)
 	conn, err := grpc.NewClient(fmt.Sprintf("%s:%s", addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Println("Error connecting to node: ", err)
@@ -181,7 +183,7 @@ func (n *RingNode) Discover() (string, error) {
 	conn.SetReadDeadline(deadline)
 
 	for {
-		nbytes, src, err := conn.ReadFromUDP(buf)
+		_, src, err := conn.ReadFromUDP(buf)
 
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
@@ -193,8 +195,7 @@ func (n *RingNode) Discover() (string, error) {
 
 		if src.String() != n.Address {
 			fmt.Printf("Encontrado nodo en %s\n", src.String())
-			responsable := string(buf[:nbytes])
-			return responsable, nil
+			return src.String(), nil
 		}
 	}
 }

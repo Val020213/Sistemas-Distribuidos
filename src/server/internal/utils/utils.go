@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func GetEnvAsInt(key string, defaultValue int) int {
@@ -37,4 +38,8 @@ func Between(x, a, b uint64) bool {
 
 func BetweenRightInclusive(x, a, b uint64) bool {
 	return (a < x && x <= b) || (b < x && x <= a)
+}
+
+func IpAddress(addrWithPort string) string {
+	return strings.Split(addrWithPort, ":")[0]
 }
