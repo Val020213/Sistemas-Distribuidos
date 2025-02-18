@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/sha1"
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 	"os"
 	"strconv"
@@ -32,13 +33,24 @@ func ChordHash(nodeAddress string, mBits int) uint64 {
 	return id & mask
 }
 
-func Between(x, a, b uint64) bool {
-	return (a < x && x < b) || (b < x && x < a)
+// func between(x, a, b uint64) bool { // deprecated
+// 	fmt.Println("Asked if ", x, " is between", a, " and ", b)
+// 	return (a < x && x < b) || (b < x && x < a)
+// }
+
+func BetweenRightInclusive(x, a, b uint64) bool { // use this instead of Between
+	fmt.Println("Asked if ", x, " is between right inclusive", a, " and ", b)
+	if a < b {
+		return a < x && x <= b
+	}
+	fmt.Println("WRAP AROUND")
+	return a < x || x <= b
 }
 
-func BetweenRightInclusive(x, a, b uint64) bool {
-	return (a < x && x <= b) || (b < x && x <= a)
-}
+// func betweenLeftInclusive(x, a, b uint64) bool { // dont use for now
+// 	fmt.Println("Asked if ", x, " is between left inclusive", a, " and ", b)
+// 	return (a <= x && x < b) || (b <= x && x < a)
+// }
 
 func IpAddress(addrWithPort string) string {
 	return strings.Split(addrWithPort, ":")[0]

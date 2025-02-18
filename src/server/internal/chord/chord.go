@@ -62,12 +62,20 @@ func NewNode() *RingNode {
 }
 
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
-
 	pb.RegisterChordServiceServer(grpcServer, n)
 	fmt.Println("Starting gRPC Server on ", n.Address, ":", n.Port)
-
+	n.initNode(n.m)
 	n.joinNetwork()
 
+}
+
+func (n *RingNode) initNode(mBits int) {
+	remoteNode := &RemoteNode{Id: n.Id, Address: n.Address}
+	for i := 0; i < mBits; i++ {
+		n.Finger[i] = remoteNode
+	}
+	n.Predecessor = remoteNode
+	n.Successor = remoteNode
 }
 
 func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Successful, error) {
@@ -75,7 +83,7 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Successful, e
 	defer n.mu.Unlock()
 	fmt.Println("Notified by ", node.Address)
 
-	if n.Predecessor == nil || utils.Between(node.Id, n.Predecessor.Id, n.Id) {
+	if n.Predecessor == nil || utils.BetweenRightInclusive(node.Id, n.Predecessor.Id, n.Id) {
 		n.Predecessor = &RemoteNode{Id: node.Id, Address: node.Address}
 		fmt.Println("Updated predecessor to ", node.Address)
 		return &pb.Successful{Successful: true}, nil
@@ -97,8 +105,8 @@ func (n *RingNode) FindSuccessor(ctx context.Context, req *pb.KeyRequest) (*pb.N
 
 	key := req.Key
 
-	if utils.Between(n.Id, key, n.Successor.Id) {
-		fmt.Println("Successor found")
+	if utils.BetweenRightInclusive(key, n.Id, n.Successor.Id) {
+		fmt.Println("Successor found", "Id:", n.Successor.Id, " Address:", n.Successor.Address)
 		return &pb.Node{Id: n.Successor.Id, Address: n.Successor.Address}, nil
 	}
 
@@ -111,10 +119,11 @@ func (n *RingNode) FindSuccessor(ctx context.Context, req *pb.KeyRequest) (*pb.N
 		fmt.Println("Error connecting to next node: ", err)
 		return nil, err
 	}
+
 	defer conn.Close()
 
 	client := pb.NewChordServiceClient(conn)
-	fmt.Println("Asking next node for successor")
+	fmt.Println("Asking next node for successor", "Id:", nextNode.Id, " Address:", nextNode.Address)
 	return client.FindSuccessor(ctx, req)
 }
 
@@ -122,16 +131,19 @@ func (n *RingNode) closestPrecedingNode(key uint64) (*pb.Node, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	fmt.Println("Finding closest preceding node for key:", key)
+
 	for i := len(n.Finger) - 1; i >= 0; i-- {
 		if n.Finger[i] == nil {
 			continue
 		}
 
-		if utils.Between(n.Finger[i].Id, n.Id, key) {
+		if utils.BetweenRightInclusive(n.Finger[i].Id, n.Id, key) {
+			fmt.Println("Closest preceding node found ", "Id:", n.Finger[i].Id, " Address:", n.Finger[i].Address)
 			return &pb.Node{Id: n.Finger[i].Id, Address: n.Finger[i].Address}, nil
 		}
 	}
-
+	fmt.Println("Closest preceding node found ", "Id:", n.Successor.Id, " Address:", n.Successor.Address)
 	return &pb.Node{Id: n.Successor.Id, Address: n.Successor.Address}, nil
 }
 
@@ -139,7 +151,17 @@ func (n *RingNode) joinNetwork() (string, error) {
 
 	fmt.Println("Joining network...")
 
-	addr, _ := n.Discover()
+	addr, err := n.Discover()
+
+	if err != nil {
+		return "", fmt.Errorf("error discovering network: %v", err)
+	}
+
+	if addr == n.Address {
+		fmt.Println("I'm the first node in the network")
+		return n.Address, nil
+	}
+
 	conn, err := grpc.NewClient(utils.ChangePort(addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
