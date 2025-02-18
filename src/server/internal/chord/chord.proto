@@ -5,7 +5,7 @@ package chord;
 option go_package = "./chordpb";
 
 service ChordService {
-	rpc Notify(Node) returns (Succesfull);
+	rpc Notify(Node) returns (Successful);
 	rpc Health(Empty) returns (HealthResponse);
 	rpc FindSuccessor(KeyRequest) returns (Node);
 	rpc GetPredecessor(Empty) returns (Node);
@@ -24,8 +24,8 @@ message KeyRequest{
 	uint64 key = 1;
 }
 
-message Succesfull {
-	bool succesfull = 1;
+message Successful {
+	bool Successful = 1;
 }
 
 message HealthResponse {

@@ -29,7 +29,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChordServiceClient interface {
-	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Succesfull, error)
+	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Successful, error)
 	Health(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HealthResponse, error)
 	FindSuccessor(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*Node, error)
 	GetPredecessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Node, error)
@@ -43,9 +43,9 @@ func NewChordServiceClient(cc grpc.ClientConnInterface) ChordServiceClient {
 	return &chordServiceClient{cc}
 }
 
-func (c *chordServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Succesfull, error) {
+func (c *chordServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Successful, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Succesfull)
+	out := new(Successful)
 	err := c.cc.Invoke(ctx, ChordService_Notify_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (c *chordServiceClient) GetPredecessor(ctx context.Context, in *Empty, opts
 // All implementations must embed UnimplementedChordServiceServer
 // for forward compatibility.
 type ChordServiceServer interface {
-	Notify(context.Context, *Node) (*Succesfull, error)
+	Notify(context.Context, *Node) (*Successful, error)
 	Health(context.Context, *Empty) (*HealthResponse, error)
 	FindSuccessor(context.Context, *KeyRequest) (*Node, error)
 	GetPredecessor(context.Context, *Empty) (*Node, error)
@@ -101,7 +101,7 @@ type ChordServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChordServiceServer struct{}
 
-func (UnimplementedChordServiceServer) Notify(context.Context, *Node) (*Succesfull, error) {
+func (UnimplementedChordServiceServer) Notify(context.Context, *Node) (*Successful, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
 }
 func (UnimplementedChordServiceServer) Health(context.Context, *Empty) (*HealthResponse, error) {

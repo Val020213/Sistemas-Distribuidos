@@ -62,7 +62,7 @@ func NewNode() *RingNode {
 }
 
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
-	fmt.Println("Starting gRPC Server")
+
 	pb.RegisterChordServiceServer(grpcServer, n)
 	fmt.Println("Starting gRPC Server on ", n.Address, ":", n.Port)
 
@@ -70,7 +70,7 @@ func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 
 }
 
-func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Succesfull, error) {
+func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Successful, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	fmt.Println("Notified by ", node.Address)
@@ -78,10 +78,10 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Succesfull, e
 	if n.Predecessor == nil || utils.Between(node.Id, n.Predecessor.Id, n.Id) {
 		n.Predecessor = &RemoteNode{Id: node.Id, Address: node.Address}
 		fmt.Println("Updated predecessor to ", node.Address)
-		return &pb.Succesfull{Succesfull: true}, nil
+		return &pb.Successful{Successful: true}, nil
 	}
 
-	return &pb.Succesfull{Succesfull: false}, nil
+	return &pb.Successful{Successful: false}, nil
 }
 
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
@@ -105,7 +105,8 @@ func (n *RingNode) FindSuccessor(ctx context.Context, req *pb.KeyRequest) (*pb.N
 	fmt.Println("Finding closest preceding node")
 	nextNode, _ := n.closestPrecedingNode(key)
 
-	conn, err := grpc.NewClient(nextNode.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(utils.ChangePort(nextNode.Address, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
 		fmt.Println("Error connecting to next node: ", err)
 		return nil, err
@@ -139,10 +140,8 @@ func (n *RingNode) joinNetwork() (string, error) {
 	fmt.Println("Joining network...")
 
 	addr, _ := n.Discover()
-	fmt.Println("Discovered node ", addr)
-	addr = utils.IpAddress(addr)
-	fmt.Println("Connecting to node ", addr, ":", grpcPort)
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%s", addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(utils.ChangePort(addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
 		fmt.Println("Error connecting to node: ", err)
 		return n.joinNetwork()

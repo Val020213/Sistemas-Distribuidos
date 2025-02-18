@@ -43,3 +43,7 @@ func BetweenRightInclusive(x, a, b uint64) bool {
 func IpAddress(addrWithPort string) string {
 	return strings.Split(addrWithPort, ":")[0]
 }
+
+func ChangePort(ip string, port string) string {
+	return IpAddress(ip) + ":" + port
+}
