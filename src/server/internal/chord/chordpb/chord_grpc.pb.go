@@ -23,6 +23,7 @@ const (
 	ChordService_Health_FullMethodName         = "/chord.ChordService/Health"
 	ChordService_FindSuccessor_FullMethodName  = "/chord.ChordService/FindSuccessor"
 	ChordService_GetPredecessor_FullMethodName = "/chord.ChordService/GetPredecessor"
+	ChordService_GetSuccessors_FullMethodName  = "/chord.ChordService/GetSuccessors"
 )
 
 // ChordServiceClient is the client API for ChordService service.
@@ -31,8 +32,9 @@ const (
 type ChordServiceClient interface {
 	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Successful, error)
 	Health(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HealthResponse, error)
-	FindSuccessor(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*Node, error)
+	FindSuccessor(ctx context.Context, in *FindSuccessorRequest, opts ...grpc.CallOption) (*Node, error)
 	GetPredecessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Node, error)
+	GetSuccessors(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetSuccessorsResponse, error)
 }
 
 type chordServiceClient struct {
@@ -63,7 +65,7 @@ func (c *chordServiceClient) Health(ctx context.Context, in *Empty, opts ...grpc
 	return out, nil
 }
 
-func (c *chordServiceClient) FindSuccessor(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*Node, error) {
+func (c *chordServiceClient) FindSuccessor(ctx context.Context, in *FindSuccessorRequest, opts ...grpc.CallOption) (*Node, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Node)
 	err := c.cc.Invoke(ctx, ChordService_FindSuccessor_FullMethodName, in, out, cOpts...)
@@ -83,14 +85,25 @@ func (c *chordServiceClient) GetPredecessor(ctx context.Context, in *Empty, opts
 	return out, nil
 }
 
+func (c *chordServiceClient) GetSuccessors(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetSuccessorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSuccessorsResponse)
+	err := c.cc.Invoke(ctx, ChordService_GetSuccessors_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChordServiceServer is the server API for ChordService service.
 // All implementations must embed UnimplementedChordServiceServer
 // for forward compatibility.
 type ChordServiceServer interface {
 	Notify(context.Context, *Node) (*Successful, error)
 	Health(context.Context, *Empty) (*HealthResponse, error)
-	FindSuccessor(context.Context, *KeyRequest) (*Node, error)
+	FindSuccessor(context.Context, *FindSuccessorRequest) (*Node, error)
 	GetPredecessor(context.Context, *Empty) (*Node, error)
+	GetSuccessors(context.Context, *Empty) (*GetSuccessorsResponse, error)
 	mustEmbedUnimplementedChordServiceServer()
 }
 
@@ -107,11 +120,14 @@ func (UnimplementedChordServiceServer) Notify(context.Context, *Node) (*Successf
 func (UnimplementedChordServiceServer) Health(context.Context, *Empty) (*HealthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Health not implemented")
 }
-func (UnimplementedChordServiceServer) FindSuccessor(context.Context, *KeyRequest) (*Node, error) {
+func (UnimplementedChordServiceServer) FindSuccessor(context.Context, *FindSuccessorRequest) (*Node, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FindSuccessor not implemented")
 }
 func (UnimplementedChordServiceServer) GetPredecessor(context.Context, *Empty) (*Node, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPredecessor not implemented")
+}
+func (UnimplementedChordServiceServer) GetSuccessors(context.Context, *Empty) (*GetSuccessorsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSuccessors not implemented")
 }
 func (UnimplementedChordServiceServer) mustEmbedUnimplementedChordServiceServer() {}
 func (UnimplementedChordServiceServer) testEmbeddedByValue()                      {}
@@ -171,7 +187,7 @@ func _ChordService_Health_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _ChordService_FindSuccessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(KeyRequest)
+	in := new(FindSuccessorRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -183,7 +199,7 @@ func _ChordService_FindSuccessor_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: ChordService_FindSuccessor_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).FindSuccessor(ctx, req.(*KeyRequest))
+		return srv.(ChordServiceServer).FindSuccessor(ctx, req.(*FindSuccessorRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -202,6 +218,24 @@ func _ChordService_GetPredecessor_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChordServiceServer).GetPredecessor(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChordService_GetSuccessors_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordServiceServer).GetSuccessors(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChordService_GetSuccessors_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordServiceServer).GetSuccessors(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -228,6 +262,10 @@ var ChordService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPredecessor",
 			Handler:    _ChordService_GetPredecessor_Handler,
+		},
+		{
+			MethodName: "GetSuccessors",
+			Handler:    _ChordService_GetSuccessors_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

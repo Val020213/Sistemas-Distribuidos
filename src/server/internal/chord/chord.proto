@@ -7,8 +7,9 @@ option go_package = "./chordpb";
 service ChordService {
 	rpc Notify(Node) returns (Successful);
 	rpc Health(Empty) returns (HealthResponse);
-	rpc FindSuccessor(KeyRequest) returns (Node);
+	rpc FindSuccessor(FindSuccessorRequest) returns (Node);
 	rpc GetPredecessor(Empty) returns (Node);
+	rpc GetSuccessors(Empty) returns (GetSuccessorsResponse);
 }
 
 message Empty{
@@ -18,14 +19,22 @@ message Empty{
 message Node{
 	uint64 id = 1;
 	string address = 2;
+	repeated Node successors = 3;
+	Node predecessor = 4;
 }
 
-message KeyRequest{
+message FindSuccessorRequest{
 	uint64 key = 1;
+	int32 hops = 2;
+	map<uint64, bool> visited = 3;
+}
+
+message GetSuccessorsResponse{
+	repeated Node successors = 1;
 }
 
 message Successful {
-	bool Successful = 1;
+	bool successful = 1;
 }
 
 message HealthResponse {

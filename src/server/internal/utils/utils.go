@@ -33,11 +33,6 @@ func ChordHash(nodeAddress string, mBits int) uint64 {
 	return id & mask
 }
 
-// func between(x, a, b uint64) bool { // deprecated
-// 	fmt.Println("Asked if ", x, " is between", a, " and ", b)
-// 	return (a < x && x < b) || (b < x && x < a)
-// }
-
 func BetweenRightInclusive(x, a, b uint64) bool { // use this instead of Between
 	fmt.Println("Asked if ", x, " is between right inclusive", a, " and ", b)
 	if a < b {
@@ -47,10 +42,14 @@ func BetweenRightInclusive(x, a, b uint64) bool { // use this instead of Between
 	return a < x || x <= b
 }
 
-// func betweenLeftInclusive(x, a, b uint64) bool { // dont use for now
-// 	fmt.Println("Asked if ", x, " is between left inclusive", a, " and ", b)
-// 	return (a <= x && x < b) || (b <= x && x < a)
-// }
+func Between(x, a, b uint64) bool {
+	fmt.Println("Asked if ", x, " is between", a, " and ", b)
+	if a < b {
+		return a < x && x < b
+	}
+	fmt.Println("WRAP AROUND")
+	return a < x || x < b
+}
 
 func IpAddress(addrWithPort string) string {
 	return strings.Split(addrWithPort, ":")[0]
