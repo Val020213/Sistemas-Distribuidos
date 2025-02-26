@@ -9,8 +9,8 @@ for %%i in (%*) do (
     echo Stopping container: backend%%i
     docker stop backend%%i
 
-    echo Stopping container: mongo_db%%i
-    docker stop mongo_db%%i
+    echo Stopping container: mongo_bp%%i
+    docker stop mongo_bp%%i
 )
 
 echo Pruning stopped containers and unused volumes...

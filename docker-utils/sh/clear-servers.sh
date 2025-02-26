@@ -10,7 +10,7 @@ for i in "$@"; do
     docker stop "backend${i}"
     
     echo "Stopping container: mongo_bp${i}"
-    docker stop "mongo_db${i}"
+    docker stop "mongo_bp${i}"
 done
 
 echo "Pruning stopped containers and unused volumes..."
