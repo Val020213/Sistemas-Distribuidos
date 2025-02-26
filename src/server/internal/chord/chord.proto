@@ -5,14 +5,16 @@ package chord;
 option go_package = "./chordpb";
 
 service ChordService {
-	rpc Notify(Node) returns (Successful);
+	rpc Notify(Node) returns (StoreDataRequest);
 	rpc Health(Empty) returns (HealthResponse);
 	rpc FindSuccessor(FindSuccessorRequest) returns (Node);
 	rpc GetPredecessor(Empty) returns (Node);
 	rpc GetSuccessors(Empty) returns (GetSuccessorsResponse);
+	rpc StoreData(StoreDataRequest) returns (Successful);
+	rpc DeleteData(Id) returns (Successful);
 }
 
-message Empty{
+message Empty {
 
 }
 
@@ -40,4 +42,17 @@ message Successful {
 message HealthResponse {
 	uint64 id = 1;
 	string address = 2;
+}
+
+message StoreDataRequest {
+	repeated Data data = 1;
+}
+
+message Data {
+	string key = 1;
+	string value = 2;
+}
+
+message Id {
+	uint64 id = 1;
 }

@@ -83,18 +83,27 @@ func (n *RingNode) initNode(mBits int) {
 	}
 }
 
-func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Successful, error) {
+// gRPC Chord Protocol
+
+func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequest, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	fmt.Println("Notified by ", node.Address)
 
+	data := []*pb.Data{}
+
 	if n.Predecessor == nil || utils.Between(node.Id, n.Predecessor.Id, n.Id) {
 		n.Predecessor = &pb.Node{Id: node.Id, Address: node.Address}
 		fmt.Println("Updated predecessor to ", node.Address)
-		return &pb.Successful{Successful: true}, nil
+
+		for key := range n.Data {
+			if !utils.BetweenRightInclusive(utils.ChordHash(key, n.m), n.Predecessor.Id, n.Id) {
+				data = append(data, &pb.Data{Key: key, Value: n.Data[key]})
+			}
+		}
 	}
 
-	return &pb.Successful{Successful: false}, nil
+	return &pb.StoreDataRequest{Data: data}, nil
 }
 
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
@@ -110,95 +119,6 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 		Id:      n.Id,
 		Address: n.Address,
 	}, nil
-}
-
-func (n *RingNode) joinNetwork() (string, error) {
-
-	fmt.Println("Joining network...")
-
-	bootstrapNode, err := n.GetBootstrapNode()
-
-	if err != nil {
-		fmt.Println("Error getting bootstrap node: ", err)
-		return n.joinNetwork()
-	}
-
-	if bootstrapNode == nil {
-		n.updateSuccessors([]*pb.Node{n.MakeNode()})
-	} else {
-		clientNode, conn, err := n.GetClient(bootstrapNode.Address)
-
-		if err != nil {
-			fmt.Println("Error connecting to node: ", err)
-			return n.joinNetwork()
-		}
-		defer conn.Close()
-
-		succ, err := clientNode.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: n.Id, Hops: 0, Visited: nil})
-
-		if err != nil {
-			fmt.Println("Error en la conexión: ", err)
-			return "", errors.New("no se encontraron nodos para enlazar")
-		}
-
-		predecessors := []*pb.Node{}
-		succClient, conn, err := n.GetClient(succ.Address)
-
-		if err != nil {
-			fmt.Println("Error connecting to successor: ", err)
-			return n.joinNetwork()
-		}
-		defer conn.Close()
-
-		succPredecessor, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
-
-		if err != nil {
-			fmt.Println("Error getting predecessor: ", err)
-			return n.joinNetwork()
-		}
-
-		succPredecessorClient, conn, err := n.GetClient(succPredecessor.Address)
-
-		if err != nil {
-			fmt.Println("Error connecting to predecessor: ", err)
-			return n.joinNetwork()
-		}
-
-		defer conn.Close()
-
-		candidatesSucc, err := succPredecessorClient.GetSuccessors(context.Background(), &pb.Empty{})
-
-		if err != nil {
-			fmt.Println("Error getting successors: ", err)
-			return n.joinNetwork()
-		}
-
-		predecessors = append(predecessors, candidatesSucc.Successors...)
-
-		n.updateSuccessors(append([]*pb.Node{succ}, predecessors...))
-	}
-
-	// start background tasks
-	n.RunPeriodicTasks()
-	return n.Address, nil
-}
-
-func (n *RingNode) RunPeriodicTasks() {
-	go func() {
-		for {
-			n.CheckPredecessor()
-			n.Stabilize()
-			n.FixFingersTable()
-			// TODO : REPLICATE DATA
-			time.Sleep(1 * time.Second)
-		}
-	}()
-}
-
-func (n *RingNode) CheckPredecessor() {
-	if n.Predecessor != nil && !n.IsAlive(n.Predecessor) {
-		n.Predecessor = nil
-	}
 }
 
 func (n *RingNode) GetSuccessors(ctx context.Context, empty *pb.Empty) (*pb.GetSuccessorsResponse, error) {
@@ -253,6 +173,123 @@ func (n *RingNode) FindSuccessor(ctx context.Context, request *pb.FindSuccessorR
 	return closestClient.FindSuccessor(ctx, &pb.FindSuccessorRequest{Key: key, Hops: hops + 1, Visited: visited})
 }
 
+func (n *RingNode) StoreData(ctx context.Context, data *pb.StoreDataRequest) (*pb.Successful, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	n.updateData(data.Data)
+	return &pb.Successful{Successful: true}, nil
+}
+
+func (n *RingNode) DeleteData(ctx context.Context, deleteId *pb.Id) (*pb.Successful, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	deleteData := []*pb.Data{}
+	for dataKey := range n.Data {
+		if utils.BetweenRightInclusive(utils.ChordHash(dataKey, n.m), n.Id, deleteId.Id) {
+			deleteData = append(deleteData, &pb.Data{Key: dataKey, Value: n.Data[dataKey]})
+		}
+	}
+
+	fmt.Println("Deleting data: ", deleteData)
+	for _, data := range deleteData {
+		delete(n.Data, data.Key)
+	}
+	return &pb.Successful{Successful: true}, nil
+}
+
+// Chord Utils
+
+func (n *RingNode) joinNetwork() (string, error) {
+
+	fmt.Println("Joining network...")
+
+	bootstrapNode, err := n.GetBootstrapNode()
+
+	if err != nil {
+		fmt.Println("Error getting bootstrap node: ", err)
+		return n.joinNetwork()
+	}
+
+	if bootstrapNode == nil || bootstrapNode.Address == n.Address {
+		fmt.Println("I'm the first node in the network")
+		n.updateSuccessors([]*pb.Node{n.MakeNode()})
+	} else {
+		clientNode, conn, err := n.GetClient(bootstrapNode.Address)
+		if err != nil {
+			fmt.Println("Error connecting to node: ", err)
+			return n.joinNetwork()
+		}
+		defer conn.Close()
+
+		succ, err := clientNode.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: n.Id, Hops: 0, Visited: nil})
+
+		if err != nil {
+			fmt.Println("Error en la conexión: ", err)
+			return n.joinNetwork()
+		}
+
+		predecessors := []*pb.Node{}
+
+		succClient, conn, err := n.GetClient(succ.Address)
+
+		if err != nil {
+			fmt.Println("Error connecting to successor: ", err)
+			return n.joinNetwork()
+		}
+
+		defer conn.Close()
+
+		succPredecessor, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
+
+		if err != nil {
+			fmt.Println("Error getting predecessor: ", err)
+			return n.joinNetwork()
+		}
+
+		succPredecessorClient, conn, err := n.GetClient(succPredecessor.Address)
+
+		if err != nil {
+			fmt.Println("Error connecting to predecessor: ", err)
+			return n.joinNetwork()
+		}
+
+		defer conn.Close()
+
+		candidatesSucc, err := succPredecessorClient.GetSuccessors(context.Background(), &pb.Empty{})
+
+		if err != nil {
+			fmt.Println("Error getting successors: ", err)
+			return n.joinNetwork()
+		}
+
+		predecessors = append(predecessors, candidatesSucc.Successors...)
+
+		n.updateSuccessors(append([]*pb.Node{succ}, predecessors...))
+	}
+	n.RunPeriodicTasks()
+	return n.Address, nil
+}
+
+func (n *RingNode) RunPeriodicTasks() {
+	go func() {
+		for {
+			n.CheckPredecessor()
+			n.Stabilize()
+			time.Sleep(1 * time.Second)
+		}
+	}()
+}
+
+func (n *RingNode) CheckPredecessor() *pb.Node {
+	if n.Predecessor != nil && !n.IsAlive(n.Predecessor) {
+		n.Predecessor = nil
+		return n.MakeNode()
+	}
+	return n.Predecessor
+}
+
 func (n *RingNode) ClosestPrecedingFinger(key uint64) (*pb.Node, error) {
 
 	for i := n.m - 1; i >= 0; i-- {
@@ -265,6 +302,7 @@ func (n *RingNode) ClosestPrecedingFinger(key uint64) (*pb.Node, error) {
 }
 
 func (n *RingNode) Stabilize() {
+
 	succ := n.GetFirstAliveSuccessor()
 	if succ != nil {
 		succClient, conn, err := n.GetClient(succ.Address)
@@ -274,6 +312,7 @@ func (n *RingNode) Stabilize() {
 			n.Stabilize()
 			return
 		}
+
 		defer conn.Close()
 
 		succPredecessor, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
@@ -286,11 +325,18 @@ func (n *RingNode) Stabilize() {
 
 		x := succPredecessor
 
-		if x != nil && n.IsAlive(x) && utils.Between(x.Id, n.Id, succ.Id) {
+		if x != nil && utils.Between(x.Id, n.Id, succ.Id) && n.IsAlive(x) { // contemplando quitar el isAlive
 			n.updateSuccessors(append([]*pb.Node{x}, x.Successors...))
 		}
 
-		succClient.Notify(context.Background(), n.MakeNode())
+		retrievedData, err := succClient.Notify(context.Background(), n.MakeNode())
+
+		if err != nil {
+			fmt.Println("Error notifying successor: ", err)
+			n.Stabilize()
+			return
+		}
+
 		newSuccessors, err := succClient.GetSuccessors(context.Background(), &pb.Empty{})
 
 		if err != nil {
@@ -300,7 +346,16 @@ func (n *RingNode) Stabilize() {
 		}
 
 		n.updateSuccessors(append([]*pb.Node{succ}, newSuccessors.Successors...))
+
+		n.updateData(retrievedData.Data)
 	}
+
+	n.FixFingersTable()
+
+	if succ != nil {
+		n.replicateData()
+	}
+
 }
 
 func (n *RingNode) FixFingersTable() {
@@ -314,8 +369,6 @@ func (n *RingNode) FixFingersTable() {
 		}
 	}
 }
-
-// Chord Utils
 
 func (n *RingNode) updateSuccessors(newSuccessors []*pb.Node) {
 	n.mu.Lock()
@@ -352,19 +405,11 @@ func (n *RingNode) updateSuccessors(newSuccessors []*pb.Node) {
 }
 
 func (n *RingNode) GetFirstAliveSuccessor() *pb.Node {
-	candidates := append(n.Successors, n.MakeNode())
-
-	for _, node := range candidates {
-
-		if node.Id == n.Id {
-			return node
-		}
-
+	for _, node := range n.Successors {
 		if n.IsAlive(node) {
 			return node
 		}
 	}
-
 	return n.MakeNode()
 }
 
@@ -382,6 +427,48 @@ func (n *RingNode) IsAlive(remoteNode *pb.Node) bool {
 	}
 
 	return false
+}
+
+// data management
+
+func (n *RingNode) replicateData() {
+	predecessorId := n.CheckPredecessor().Id
+
+	for _, successor := range n.Successors {
+		replicated := []*pb.Data{}
+		for key, value := range n.Data {
+			if n.Id != successor.Id && utils.Between(utils.ChordHash(key, n.m), predecessorId, successor.Id) {
+				replicated = append(replicated, &pb.Data{Key: key, Value: value})
+			}
+		}
+		successorClient, conn, err := n.GetClient(successor.Address)
+
+		if err != nil { // handle error
+			fmt.Println("Error connecting to successor: ", err)
+			n.Stabilize()
+			continue
+		}
+
+		defer conn.Close()
+		successorClient.StoreData(context.Background(), &pb.StoreDataRequest{Data: replicated})
+	}
+
+	if len(n.Successors) >= tolerance {
+		lastSuccessorClient, conn, err := n.GetClient(n.Successors[tolerance-1].Address)
+		if err != nil {
+			fmt.Println("Error connecting to last successor: ", err)
+			return
+		}
+		defer conn.Close()
+		lastSuccessorClient.DeleteData(context.Background(), &pb.Id{Id: predecessorId})
+	}
+
+}
+
+func (n *RingNode) updateData(data []*pb.Data) {
+	for _, d := range data {
+		n.Data[d.Key] = d.Value
+	}
 }
 
 // gRPC Client
