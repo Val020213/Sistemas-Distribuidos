@@ -45,7 +45,7 @@ var (
 	grpcAddr      = os.Getenv("IP_ADDRESS")
 	grpcPort      = os.Getenv("RPC_PORT")
 	tolerance     = 3 // update this to the environment variables
-	mBits         = utils.GetEnvAsInt("CHORD_BITS", 8)
+	mBits         = utils.GetEnvAsInt("CHORD_BITS", 3)
 	multicastAddr = "224.0.0.1:9999"
 )
 
@@ -66,6 +66,7 @@ func NewNode() *RingNode {
 		Successors:     make([]*pb.Node, 1),
 		Predecessor:    nil,
 		SuccessorCache: make([]*pb.Node, 1),
+		mu:             sync.Mutex{},
 	}
 }
 
@@ -213,7 +214,8 @@ func (n *RingNode) joinNetwork() (string, error) {
 	}
 
 	if bootstrapNode == nil || bootstrapNode.Address == n.Address {
-		fmt.Println("I'm the first node in the network")
+		fmt.Println("I am the bootstrap node")
+		fmt.Println("Is this right?", []*pb.Node{n.MakeNode()}, ' ', n.MakeNode())
 		n.updateSuccessors([]*pb.Node{n.MakeNode()})
 	} else {
 		clientNode, conn, err := n.GetClient(bootstrapNode.Address)
@@ -371,14 +373,18 @@ func (n *RingNode) FixFingersTable() {
 }
 
 func (n *RingNode) updateSuccessors(newSuccessors []*pb.Node) {
+	fmt.Println("Lock and unlock")
 	n.mu.Lock()
 	defer n.mu.Unlock()
+
+	fmt.Println("Updating successors...")
 
 	merged := []*pb.Node{}
 	seen := make(map[uint64]bool)
 
 	for _, node := range append(n.Successors, newSuccessors...) {
 		if node.Id != n.Id {
+			fmt.Println("Adding node ", node.Address, " to the merged list")
 			if _, ok := seen[node.Id]; !ok { // Handle alive nodes in a gorutine or channel to avoid blocking
 				merged = append(merged, node)
 				seen[node.Id] = true
@@ -390,11 +396,15 @@ func (n *RingNode) updateSuccessors(newSuccessors []*pb.Node) {
 		}
 	}
 
+	fmt.Println("Merged list: ", merged)
+
 	sort.Slice(merged, func(i, j int) bool { // Warning with None
 		diffI := (merged[i].Id - n.Id) % n.idSpace
 		diffJ := (merged[j].Id - n.Id) % n.idSpace
 		return diffI < diffJ
 	})
+
+	fmt.Println("Sorted list: ", merged)
 
 	newSuccessors = make([]*pb.Node, 0, tolerance+1)
 	for i := 0; i < len(merged) && i < tolerance+1; i++ {
@@ -493,7 +503,7 @@ func (n *RingNode) GetBootstrapNode() (*pb.Node, error) {
 	}
 
 	if addr == n.Address {
-		fmt.Println("I'm the first node in the network")
+		fmt.Println("I am the bootstrap node")
 		return nil, nil
 	}
 
