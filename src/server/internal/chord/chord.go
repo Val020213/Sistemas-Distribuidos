@@ -108,15 +108,24 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequ
 	return &pb.StoreDataRequest{Data: data}, nil
 }
 
+func (n *RingNode) PrintState(ctx context.Context, empty *pb.Empty) (*pb.State, error) {
+
+	stateData := []*pb.Data{}
+	for key, value := range n.Data {
+		stateData = append(stateData, &pb.Data{Key: key, Value: value})
+	}
+
+	return &pb.State{
+		Id:          utils.ChordHash(n.Address, n.m),
+		Addr:        n.Address,
+		Data:        stateData,
+		Finger:      n.Finger,
+		Successors:  n.Successors,
+		Predecessor: n.Predecessor,
+	}, nil
+}
+
 func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthResponse, error) {
-	fmt.Println(" * * * * * *")
-	fmt.Println("Health check")
-	fmt.Println("Node ", n.Address, " is alive")
-	fmt.Println("Successors: ", n.Successors)
-	fmt.Println("Predecessor: ", n.Predecessor)
-	fmt.Println("Finger: ", n.Finger)
-	fmt.Println("Data: ", n.Data)
-	fmt.Println(" * * * * * *")
 	return &pb.HealthResponse{
 		Id:      n.Id,
 		Address: n.Address,
@@ -322,66 +331,63 @@ func (n *RingNode) Stabilize() {
 
 	succ := n.GetFirstAliveSuccessor()
 
-	if succ.Id != n.Id {
+	succClient, conn, err := n.GetClient(succ.Address)
 
-		succClient, conn, err := n.GetClient(succ.Address)
+	if err != nil {
+		fmt.Println("STABILIZE: Error connecting to successor: ", err)
+		return
+	}
+
+	defer conn.Close()
+
+	succPredecessor, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		fmt.Println("STABILIZE: Error getting predecessor: ", err)
+		return
+	}
+
+	if succPredecessor.Address != "" {
+
+		succPredecessorClient, conn, err := n.GetClient(succPredecessor.Address)
 
 		if err != nil {
-			fmt.Println("STABILIZE: Error connecting to successor: ", err)
+			fmt.Println("STABILIZE: Error connecting to predecessor: ", err)
 			return
 		}
 
 		defer conn.Close()
 
-		succPredecessor, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
-
-		if err != nil {
-			fmt.Println("STABILIZE: Error getting predecessor: ", err)
-			return
-		}
-
-		if succPredecessor.Address != "" {
-
-			succPredecessorClient, conn, err := n.GetClient(succPredecessor.Address)
+		if utils.Between(succPredecessor.Id, n.Id, succ.Id) {
+			succPredecessorSuccessors, err := succPredecessorClient.GetSuccessors(context.Background(), &pb.Empty{})
 
 			if err != nil {
-				fmt.Println("STABILIZE: Error connecting to predecessor: ", err)
+				fmt.Println("STABILIZE: Error getting successors: Successor Address: ", succPredecessor.Address, " Error:", err)
 				return
 			}
 
-			defer conn.Close()
-
-			if utils.Between(succPredecessor.Id, n.Id, succ.Id) {
-				succPredecessorSuccessors, err := succPredecessorClient.GetSuccessors(context.Background(), &pb.Empty{})
-
-				if err != nil {
-					fmt.Println("STABILIZE: Error getting successors: Successor Address: ", succPredecessor.Address, " Error:", err)
-					return
-				}
-
-				n.updateSuccessors(append([]*pb.Node{succPredecessor}, succPredecessorSuccessors.Successors...))
-			}
+			n.updateSuccessors(append([]*pb.Node{succPredecessor}, succPredecessorSuccessors.Successors...))
 		}
-
-		fmt.Println("STABILIZE: Notify to successor")
-		retrievedData, err := succClient.Notify(context.Background(), n.MakeNode())
-
-		if err != nil {
-			fmt.Println("STABILIZE: Error notifying successor: ", err)
-			return
-		}
-
-		newSuccessors, err := succClient.GetSuccessors(context.Background(), &pb.Empty{})
-
-		if err != nil {
-			fmt.Println("STABILIZE: Error getting successors: ", err)
-			return
-		}
-
-		n.updateSuccessors(append([]*pb.Node{succ}, newSuccessors.Successors...))
-
-		n.updateData(retrievedData.Data)
 	}
+
+	fmt.Println("STABILIZE: Notify to successor")
+	retrievedData, err := succClient.Notify(context.Background(), n.MakeNode())
+
+	if err != nil {
+		fmt.Println("STABILIZE: Error notifying successor: ", err)
+		return
+	}
+
+	newSuccessors, err := succClient.GetSuccessors(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		fmt.Println("STABILIZE: Error getting successors: ", err)
+		return
+	}
+
+	n.updateSuccessors(append([]*pb.Node{succ}, newSuccessors.Successors...))
+
+	n.updateData(retrievedData.Data)
 
 	n.FixFingersTable()
 

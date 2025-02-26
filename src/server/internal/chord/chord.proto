@@ -12,6 +12,7 @@ service ChordService {
 	rpc GetSuccessors(Empty) returns (GetSuccessorsResponse);
 	rpc StoreData(StoreDataRequest) returns (Successful);
 	rpc DeleteData(Id) returns (Successful);
+	rpc PrintState(Empty) returns (State);
 }
 
 message Empty {
@@ -53,4 +54,13 @@ message Data {
 
 message Id {
 	uint64 id = 1;
+}
+
+message State {
+	uint64 id = 1;
+	string addr = 2;
+	repeated Data data = 3;
+	repeated Node finger = 4;
+	repeated Node successors = 5;
+	Node predecessor = 6;
 }
