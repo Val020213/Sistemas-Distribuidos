@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"sort"
@@ -133,21 +132,14 @@ func (n *RingNode) Health(ctx context.Context, empty *pb.Empty) (*pb.HealthRespo
 }
 
 func (n *RingNode) GetSuccessors(ctx context.Context, empty *pb.Empty) (*pb.GetSuccessorsResponse, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	return &pb.GetSuccessorsResponse{Successors: n.Successors}, nil
+	return &pb.GetSuccessorsResponse{Successors: n.SuccessorCache}, nil
 }
 
 func (n *RingNode) GetPredecessor(ctx context.Context, empty *pb.Empty) (*pb.Node, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 	return n.Predecessor, nil
 }
 
 func (n *RingNode) FindSuccessor(ctx context.Context, request *pb.FindSuccessorRequest) (*pb.Node, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 
 	key, hops, visited := request.Key, request.Hops, request.Visited
 
@@ -227,6 +219,7 @@ func (n *RingNode) joinNetwork() (string, error) {
 		fmt.Println("JoinNetwork: I am the bootstrap node")
 		n.updateSuccessors([]*pb.Node{n.MakeNode()})
 	} else {
+		fmt.Println("Estableciendo conexión con ", bootstrapNode.Address)
 		clientNode, conn, err := n.GetClient(bootstrapNode.Address)
 
 		if err != nil {
@@ -235,9 +228,10 @@ func (n *RingNode) joinNetwork() (string, error) {
 		}
 
 		defer conn.Close()
-
+		fmt.Println("Conexión establecida: ", n.Id, " -> ", bootstrapNode.Id)
+		fmt.Println("Buscando sucesor...")
 		succ, err := clientNode.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: n.Id, Hops: 0, Visited: nil})
-
+		fmt.Println("Sucesor encontrado: ", succ.Id)
 		if err != nil {
 			fmt.Println("JoinNetwork: Error en la conexión: ", err)
 			return n.joinNetwork()
@@ -246,7 +240,7 @@ func (n *RingNode) joinNetwork() (string, error) {
 		predecessors := []*pb.Node{}
 
 		succClient, conn, err := n.GetClient(succ.Address)
-
+		fmt.Println("Conexión establecida con sucesor: ", succ.Address)
 		if err != nil {
 			fmt.Println("JoinNetwork: Error connecting to successor: ", err)
 			return n.joinNetwork()
@@ -254,7 +248,9 @@ func (n *RingNode) joinNetwork() (string, error) {
 
 		defer conn.Close()
 
+		fmt.Println("Buscando predecesor...")
 		succPredecessor, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
+		fmt.Println("Predecesor encontrado: ", succPredecessor.Id)
 
 		if err != nil {
 			fmt.Println("JoinNetwork: Error getting predecessor: ", err)
@@ -264,8 +260,9 @@ func (n *RingNode) joinNetwork() (string, error) {
 		candidatesSuccessors := []*pb.Node{}
 
 		if succPredecessor.Address != "" {
-
+			fmt.Println("Estableciendo conexión con predecesor: ", succPredecessor.Address)
 			succPredecessorClient, conn, err := n.GetClient(succPredecessor.Address)
+			fmt.Println("Conexión establecida con predecesor: ", succPredecessor.Address)
 
 			if err != nil {
 				fmt.Println("JoinNetwork: Error connecting to predecessor: ", err)
@@ -273,7 +270,7 @@ func (n *RingNode) joinNetwork() (string, error) {
 			}
 
 			defer conn.Close()
-
+			fmt.Println("Buscando sucesores del predecesor...")
 			candidatesSucc, err := succPredecessorClient.GetSuccessors(context.Background(), &pb.Empty{})
 
 			if err != nil {
@@ -281,11 +278,13 @@ func (n *RingNode) joinNetwork() (string, error) {
 				return n.joinNetwork()
 			}
 
+			fmt.Println("Sucesores del predecesor encontrados: ", candidatesSucc.Successors)
 			candidatesSuccessors = append(candidatesSuccessors, candidatesSucc.Successors...)
 		}
 
+		fmt.Println("Actualizando predecesor...")
 		predecessors = append(predecessors, candidatesSuccessors...)
-
+		fmt.Println("Predecesores: ", predecessors)
 		n.updateSuccessors(append([]*pb.Node{succ}, predecessors...))
 	}
 	n.RunPeriodicTasks()
@@ -352,7 +351,7 @@ func (n *RingNode) Stabilize() {
 		succPredecessorClient, conn, err := n.GetClient(succPredecessor.Address)
 
 		if err != nil {
-			fmt.Println("STABILIZE: Error connecting to predecessor: ", err)
+			utils.RedPrint("STABILIZE: Error connecting to predecessor: ", err)
 			return
 		}
 
@@ -362,7 +361,7 @@ func (n *RingNode) Stabilize() {
 			succPredecessorSuccessors, err := succPredecessorClient.GetSuccessors(context.Background(), &pb.Empty{})
 
 			if err != nil {
-				fmt.Println("STABILIZE: Error getting successors: Successor Address: ", succPredecessor.Address, " Error:", err)
+				utils.RedPrint("STABILIZE: Error getting successors: Successor Address: ", succPredecessor.Address, " Error:", err)
 				return
 			}
 
@@ -374,14 +373,14 @@ func (n *RingNode) Stabilize() {
 	retrievedData, err := succClient.Notify(context.Background(), n.MakeNode())
 
 	if err != nil {
-		fmt.Println("STABILIZE: Error notifying successor: ", err)
+		utils.RedPrint("STABILIZE: Error notifying successor: ", err)
 		return
 	}
 
 	newSuccessors, err := succClient.GetSuccessors(context.Background(), &pb.Empty{})
 
 	if err != nil {
-		fmt.Println("STABILIZE: Error getting successors: ", err)
+		utils.RedPrint("STABILIZE: Error getting successors: ", err)
 		return
 	}
 
@@ -412,37 +411,36 @@ func (n *RingNode) FixFingersTable() {
 }
 
 func (n *RingNode) updateSuccessors(newSuccessors []*pb.Node) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 
 	merged := []*pb.Node{}
 	seen := make(map[uint64]bool)
 
 	for _, node := range append(n.Successors, newSuccessors...) {
-		if node.Id != n.Id {
-			if _, ok := seen[node.Id]; !ok { // Handle alive nodes in a gorutine or channel to avoid blocking
-				merged = append(merged, node)
-				seen[node.Id] = true
-
-				if len(merged) > tolerance {
-					break
-				}
+		if node.Id != n.Id && !seen[node.Id] && n.IsAlive(node) {
+			merged = append(merged, node)
+			seen[node.Id] = true
+			if len(merged) > tolerance {
+				break
 			}
 		}
 	}
 
-	sort.Slice(merged, func(i, j int) bool { // Warning with None
+	sort.Slice(merged, func(i, j int) bool {
 		diffI := (merged[i].Id - n.Id) % n.idSpace
 		diffJ := (merged[j].Id - n.Id) % n.idSpace
 		return diffI < diffJ
 	})
 
-	newSuccessors = make([]*pb.Node, 0, tolerance+1)
-	for i := 0; i < len(merged) && i < tolerance+1; i++ {
+	newSuccessors = make([]*pb.Node, 0, tolerance)
+	for i := 0; i < len(merged) && i < tolerance; i++ {
 		newSuccessors = append(newSuccessors, merged[i])
 	}
+
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	n.Successors = newSuccessors
-	n.SuccessorCache = newSuccessors // here we can add a goroutine to update the cache
+	n.SuccessorCache = newSuccessors
 
 	fmt.Println("UpdateSuccessors: ", n.Successors)
 }
@@ -460,6 +458,7 @@ func (n *RingNode) IsAlive(remoteNode *pb.Node) bool {
 	client, conn, err := n.GetClient(remoteNode.Address)
 
 	if err != nil {
+		utils.RedPrint("IsAlive: Error connecting to node ", remoteNode.Address)
 		return false
 	}
 
@@ -468,6 +467,7 @@ func (n *RingNode) IsAlive(remoteNode *pb.Node) bool {
 	resp, err := client.Health(context.Background(), &pb.Empty{})
 
 	if err != nil || resp == nil {
+		utils.RedPrint("IsAlive: Node is not alive ", remoteNode.Address)
 		return false
 	}
 
@@ -492,9 +492,8 @@ func (n *RingNode) replicateData() {
 		successorClient, conn, err := n.GetClient(successor.Address)
 
 		if err != nil { // handle error
-			fmt.Println("Error connecting to successor: ", err)
-			n.Stabilize()
-			continue
+			utils.RedPrint("Error connecting to successor: ", err)
+			return
 		}
 
 		defer conn.Close()
@@ -504,7 +503,7 @@ func (n *RingNode) replicateData() {
 	if len(n.Successors) >= tolerance {
 		lastSuccessorClient, conn, err := n.GetClient(n.Successors[tolerance-1].Address)
 		if err != nil {
-			fmt.Println("Error connecting to last successor: ", err)
+			utils.RedPrint("Error connecting to last successor: ", err)
 			return
 		}
 		defer conn.Close()
@@ -522,11 +521,11 @@ func (n *RingNode) updateData(data []*pb.Data) {
 // gRPC Client
 func (n *RingNode) GetClient(addr string) (pb.ChordServiceClient, *grpc.ClientConn, error) {
 	if addr == "" {
-		fmt.Printf("\033[31mGetClient: Addrs is EMPTY!!!\033[0m\n")
+		return nil, nil, errors.New("empty address")
 	}
 	conn, err := grpc.NewClient(utils.ChangePort(addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		fmt.Println("GetClient: Error connecting to node: ", err)
+		utils.RedPrint("GetClient: Error connecting to node: ", err)
 		return nil, nil, err
 	}
 	return pb.NewChordServiceClient(conn), conn, nil
@@ -539,7 +538,7 @@ func (n *RingNode) GetBootstrapNode() (*pb.Node, error) {
 	addr, err := n.Discover()
 
 	if err != nil {
-		fmt.Println("Error discovering network: ", err)
+		utils.RedPrint("Error discovering network: ", err)
 		return nil, err
 	}
 
@@ -556,12 +555,14 @@ func (n *RingNode) Discover() (string, error) {
 
 	addr, err := net.ResolveUDPAddr("udp4", multicastAddr)
 	if err != nil {
-		log.Fatalf("Error resolving multicast address: %v", err)
+		utils.RedPrint("Error resolving multicast address: %v", err)
+		return "", err
 	}
 
 	conn, err := net.ListenMulticastUDP("udp4", nil, addr)
 	if err != nil {
-		log.Fatalf("Error listening on multicast: %v", err)
+		utils.RedPrint("Error listening on multicast: %v", err)
+		return "", err
 	}
 	defer conn.Close()
 
