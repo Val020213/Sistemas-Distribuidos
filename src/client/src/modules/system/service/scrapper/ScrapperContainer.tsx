@@ -11,6 +11,7 @@ import Link from 'next/link'
 import AddUrl from './add-url/AddUrl'
 import { downloadUrlService } from '@/services/url-service'
 import { useState } from 'react'
+import { SearchBar } from '@/components/ui/searchbar'
 
 type Props = {
   data: UrlDataType[]
@@ -87,29 +88,36 @@ export const ScrapperContainer = ({ data }: Props) => {
 
   return (
     <Stack spacing={4} sx={{ maxWidth: 'md', width: '100%' }}>
-      <Stack spacing={4} direction={'row'}>
-        <Link href={'/'}>
+      <Stack>
+        <Stack spacing={4} direction={'row'}>
+          <Link href={'/'}>
+            <HackerButton
+              variant="Button"
+              color="green"
+              sx={{
+                width: '168px',
+              }}
+            >
+              &lt; Ir al Sistema
+            </HackerButton>
+          </Link>
+
           <HackerButton
             variant="Button"
             color="green"
             sx={{
               width: '168px',
             }}
+            onClick={() => setOpenModal('addUrl')}
           >
-            &lt; Ir al Sistema
+            + Agregar URL
           </HackerButton>
-        </Link>
-
-        <HackerButton
-          variant="Button"
-          color="green"
-          sx={{
-            width: '168px',
-          }}
-          onClick={() => setOpenModal('addUrl')}
-        >
-          + Agregar URL
-        </HackerButton>
+        </Stack>
+        <SearchBar
+          search={''}
+          setSearch={(value) => {}}
+          placeholder="Buscar objetivo en internet"
+        />
       </Stack>
       <HackerDataGrid
         columns={columns}

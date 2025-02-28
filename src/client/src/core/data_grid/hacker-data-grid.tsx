@@ -7,23 +7,22 @@ import {
   GridPagination,
   GridRowClassNameParams,
   GridValidRowModel,
+  GridOverlay,
   useGridApiContext,
   useGridSelector,
 } from '@mui/x-data-grid'
 import {
   Box,
-  InputBase,
   LinearProgress,
   Stack,
   styled,
   TablePaginationProps,
   Typography,
 } from '@mui/material'
-import { GridOverlay } from '@mui/x-data-grid'
 import { useMemo, useState } from 'react'
 import HackerPagination from './CustomPagination'
 import { tailwindColors } from '@/theme/tailwindColors'
-import { SearchCodeIcon } from 'lucide-react'
+import { SearchBar } from '@/components/ui/searchbar'
 
 type Props = Omit<DataGridProps, 'pagination' | 'rows'> & {
   title?: string
@@ -127,38 +126,11 @@ const HackerDataGrid: React.FC<Props> = ({
         <Typography variant="h3" lineHeight="1.75rem">
           {title?.toUpperCase() ?? 'SISTEMA DE DATOS'}
         </Typography>
-        <Stack
-          direction={'row'}
-          alignItems={'center'}
-          borderColor={`${tailwindColors.green[500]}`}
-          border={1}
-          borderRadius={0.5}
-          paddingY={0.5}
-          paddingX={2}
-          sx={{
-            bgcolor: tailwindColors.gray[900],
-            '&:hover': {
-              borderColor: `${tailwindColors.green[500]}`,
-              boxShadow: `0 0 0 2px ${tailwindColors.gray[600]}`,
-            },
-            '&:focus-within': {
-              borderColor: `${tailwindColors.green[500]}`,
-              boxShadow: `0 0 0 2px ${tailwindColors.green[500]}`,
-            },
-          }}
-        >
-          <InputBase
-            value={search}
-            placeholder="Buscar url"
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{
-              color: `${tailwindColors.green[500]} !important`,
-              flex: 1,
-              fontSize: '0.875rem',
-            }}
-          />
-          <SearchCodeIcon size="20px" />
-        </Stack>
+        <SearchBar
+          search={search}
+          setSearch={setSearch}
+          placeholder="Buscar url"
+        />
       </Stack>
 
       <StyledDataGrid
@@ -263,9 +235,11 @@ function Pagination({
   page,
   onPageChange,
   count,
-}: Pick<
-  TablePaginationProps & { count: number },
-  'page' | 'onPageChange' | 'className' | 'count'
+}: Readonly<
+  Pick<
+    TablePaginationProps & { count: number },
+    'page' | 'onPageChange' | 'className' | 'count'
+  >
 >) {
   const apiRef = useGridApiContext()
   const pageCount = useGridSelector(apiRef, gridPageCountSelector)
