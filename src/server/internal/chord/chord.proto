@@ -15,6 +15,7 @@ service ChordService {
 	rpc StoreData(StoreDataRequest) returns (Successful);
 	rpc DeleteData(Id) returns (Successful);
 	rpc PrintState(Empty) returns (State);
+	rpc RetrieveData(Id) returns (Data);
 }
 
 message Empty {

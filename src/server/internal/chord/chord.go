@@ -93,6 +93,7 @@ func (n *RingNode) CallStoreData(data models.TaskType) error {
 	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
 
 	if err != nil {
+		fmt.Println("ERROR STORING ", data.URL)
 		return err
 	}
 
@@ -108,6 +109,32 @@ func (n *RingNode) CallStoreData(data models.TaskType) error {
 	_, err = client.StoreData(context.Background(), &pb.StoreDataRequest{Data: []*pb.Data{&pbData}})
 
 	return err
+}
+
+func (n *RingNode) CallGetData(url string) (string, error) {
+
+	key := uint64(utils.GenerateUniqueHashUrl(url))
+	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
+
+	if err != nil {
+		fmt.Println("ERROR RETRIEVING ", url)
+		return "", err
+	}
+
+	client, conn, err := n.GetClient(node.Address)
+
+	if err != nil {
+		return n.CallGetData(url)
+	}
+	defer conn.Close()
+
+	data, err := client.RetrieveData(context.Background(), &pb.Id{Id: key})
+
+	if err != nil {
+		return "", err
+	}
+
+	return data.Content, nil
 }
 
 // gRPC Chord Protocol
@@ -209,6 +236,16 @@ func (n *RingNode) StoreData(ctx context.Context, data *pb.StoreDataRequest) (*p
 
 	n.updateData(data.Data)
 	return &pb.Successful{Successful: true}, nil
+}
+
+func (n *RingNode) RetrieveData(ctx context.Context, key *pb.Id) (*pb.Data, error) {
+
+	if data, ok := n.Data[key.Id]; ok {
+		return ToPbData(&data, key.Id), nil
+	}
+
+	utils.RedPrint("Data with id ", key, " not found")
+	return nil, errors.New(fmt.Sprint("data with id ", key, " not found"))
 }
 
 func (n *RingNode) DeleteData(ctx context.Context, deleteId *pb.Id) (*pb.Successful, error) {
