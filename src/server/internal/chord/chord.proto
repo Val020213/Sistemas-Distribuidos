@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package chord;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "./chordpb";
 
 service ChordService {
@@ -48,8 +50,13 @@ message StoreDataRequest {
 }
 
 message Data {
-	string key = 1;
-	string value = 2;
+	uint64 key = 1;
+	string url = 2;
+	string status = 3;
+	string content = 4;
+	google.protobuf.Timestamp created_at = 5;
+	google.protobuf.Timestamp updated_at = 6;
+
 }
 
 message Id {

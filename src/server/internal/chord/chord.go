@@ -13,8 +13,10 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "server/internal/chord/chordpb"
+	"server/internal/models"
 	"server/internal/scraper"
 	"server/internal/utils"
 )
@@ -31,9 +33,9 @@ type RingNode struct {
 	Finger         []*pb.Node // Finger table entries
 	SuccessorCache []*pb.Node // Cache of verified successors
 
-	Data    map[string]string // Simple key-value storage
-	m       int               // Number of bits in the hash space
-	idSpace uint64            // Number of nodes in the hash space
+	Data    map[uint64]models.TaskType // Simple key-value storage
+	m       int                        // Number of bits in the hash space
+	idSpace uint64                     // Number of nodes in the hash space
 
 	mu sync.Mutex // Protects access to mutable fields
 
@@ -57,7 +59,7 @@ func NewNode() *RingNode {
 		Address: grpcAddr,
 		Port:    grpcPort,
 		Finger:  make([]*pb.Node, mBits),
-		Data:    make(map[string]string),
+		Data:    make(map[uint64]models.TaskType),
 		m:       mBits,
 		idSpace: 1 << mBits,
 		Scraper: scraper,
@@ -83,6 +85,31 @@ func (n *RingNode) initNode(mBits int) {
 	}
 }
 
+// http server
+
+func (n *RingNode) CallStoreData(data models.TaskType) error {
+
+	key := uint64(utils.GenerateUniqueHashUrl(data.URL))
+	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
+
+	if err != nil {
+		return err
+	}
+
+	client, conn, err := n.GetClient(node.Address)
+
+	if err != nil {
+		return n.CallStoreData(data)
+	}
+	defer conn.Close()
+
+	pbData := *ToPbData(&data, key)
+
+	_, err = client.StoreData(context.Background(), &pb.StoreDataRequest{Data: []*pb.Data{&pbData}})
+
+	return err
+}
+
 // gRPC Chord Protocol
 
 func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequest, error) {
@@ -97,9 +124,9 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequ
 		n.Predecessor = &pb.Node{Id: node.Id, Address: node.Address}
 		fmt.Println("Updated predecessor to ", node.Address)
 
-		for key := range n.Data {
-			if !utils.BetweenRightInclusive(utils.ChordHash(key, n.m), n.Predecessor.Id, n.Id) {
-				data = append(data, &pb.Data{Key: key, Value: n.Data[key]})
+		for key, cData := range n.Data {
+			if !utils.BetweenRightInclusive(key, n.Predecessor.Id, n.Id) {
+				data = append(data, ToPbData(&cData, key))
 			}
 		}
 	}
@@ -110,8 +137,8 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequ
 func (n *RingNode) PrintState(ctx context.Context, empty *pb.Empty) (*pb.State, error) {
 
 	stateData := []*pb.Data{}
-	for key, value := range n.Data {
-		stateData = append(stateData, &pb.Data{Key: key, Value: value})
+	for key, cData := range n.Data {
+		stateData = append(stateData, ToPbData(&cData, key))
 	}
 
 	return &pb.State{
@@ -188,16 +215,16 @@ func (n *RingNode) DeleteData(ctx context.Context, deleteId *pb.Id) (*pb.Success
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	deleteData := []*pb.Data{}
+	deleteData := []uint64{}
 	for dataKey := range n.Data {
-		if utils.BetweenRightInclusive(utils.ChordHash(dataKey, n.m), n.Id, deleteId.Id) {
-			deleteData = append(deleteData, &pb.Data{Key: dataKey, Value: n.Data[dataKey]})
+		if utils.BetweenRightInclusive(dataKey, n.Id, deleteId.Id) {
+			deleteData = append(deleteData, dataKey)
 		}
 	}
 
 	fmt.Println("Deleting data: ", deleteData)
-	for _, data := range deleteData {
-		delete(n.Data, data.Key)
+	for _, key := range deleteData {
+		delete(n.Data, key)
 	}
 	return &pb.Successful{Successful: true}, nil
 }
@@ -484,9 +511,9 @@ func (n *RingNode) replicateData() {
 
 	for _, successor := range n.Successors {
 		replicated := []*pb.Data{}
-		for key, value := range n.Data {
-			if n.Id != successor.Id && utils.Between(utils.ChordHash(key, n.m), predecessorId, successor.Id) {
-				replicated = append(replicated, &pb.Data{Key: key, Value: value})
+		for key, cData := range n.Data {
+			if n.Id != successor.Id && utils.Between(key, predecessorId, successor.Id) {
+				replicated = append(replicated, ToPbData(&cData, key))
 			}
 		}
 		successorClient, conn, err := n.GetClient(successor.Address)
@@ -514,7 +541,13 @@ func (n *RingNode) replicateData() {
 
 func (n *RingNode) updateData(data []*pb.Data) {
 	for _, d := range data {
-		n.Data[d.Key] = d.Value
+		n.Data[d.Key] = models.TaskType{
+			URL:       d.Url,
+			Status:    models.TaskStatusType(d.Status),
+			Content:   d.Content,
+			CreatedAt: d.CreatedAt.AsTime(),
+			UpdatedAt: d.UpdatedAt.AsTime(),
+		}
 	}
 }
 
@@ -592,4 +625,15 @@ func (n *RingNode) Discover() (string, error) {
 
 func (n *RingNode) MakeNode() *pb.Node {
 	return &pb.Node{Id: n.Id, Address: n.Address}
+}
+
+func ToPbData(data *models.TaskType, key uint64) *pb.Data {
+	return &pb.Data{
+		Key:       key,
+		Url:       data.URL,
+		Status:    string(data.Status),
+		Content:   data.Content,
+		CreatedAt: timestamppb.New(data.CreatedAt),
+		UpdatedAt: timestamppb.New(data.UpdatedAt),
+	}
 }

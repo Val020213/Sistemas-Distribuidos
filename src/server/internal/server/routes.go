@@ -2,9 +2,9 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"server/internal/models"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -81,37 +81,48 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// Create task in DB
-	taskUrl, err := s.node.Scraper.DB.CreateTask(models.TaskType{
-		URL: req.URL,
-	})
+	// Store task in chord ring
 
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"statusCode": http.StatusInternalServerError,
-			"status":     "error",
-			"message":    "An error occurred while creating the task",
-		})
-		return
+	task := models.TaskType{
+		URL:       req.URL,
+		Status:    models.StatusInProgress,
+		Content:   "",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	select {
-	case s.node.Scraper.TaskQueue <- taskUrl:
-		c.JSON(http.StatusAccepted, gin.H{
-			"statusCode": http.StatusOK,
-			"status":     "success",
-			"message":    "Task queued",
-			"data":       taskUrl,
-		})
+	s.node.CallStoreData(task)
 
-	default:
-		log.Printf("Queue full. Task ID: %v", taskUrl)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"statusCode": http.StatusServiceUnavailable,
-			"status":     "error",
-			"message":    "Task could not be queued",
-		})
-	}
+	// // Create task in DB
+	// taskUrl, err := s.node.Scraper.DB.CreateTask(models.TaskType{
+	// 	URL: req.URL,
+	// })
+
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	c.JSON(http.StatusInternalServerError, gin.H{
+	// 		"statusCode": http.StatusInternalServerError,
+	// 		"status":     "error",
+	// 		"message":    "An error occurred while creating the task",
+	// 	})
+	// 	return
+	// }
+	// select {
+	// case s.node.Scraper.TaskQueue <- taskUrl:
+	// 	c.JSON(http.StatusAccepted, gin.H{
+	// 		"statusCode": http.StatusOK,
+	// 		"status":     "success",
+	// 		"message":    "Task queued",
+	// 		"data":       taskUrl,
+	// 	})
+
+	// default:
+	// 	log.Printf("Queue full. Task ID: %v", taskUrl)
+	// 	c.JSON(http.StatusServiceUnavailable, gin.H{
+	// 		"statusCode": http.StatusServiceUnavailable,
+	// 		"status":     "error",
+	// 		"message":    "Task could not be queued",
+	// 	})
+	// }
 }
 
 func (s *Server) getTaskByIDHandler(c *gin.Context) {

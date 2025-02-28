@@ -26,11 +26,11 @@ func GenerateUniqueHashUrl(url string) uint32 {
 }
 
 var hardCodeHashes = map[string]uint64{
-	"10.0.10.11": 2,
-	"10.0.10.12": 5,
-	"10.0.10.13": 7,
-	"10.0.10.14": 4,
-	"10.0.10.15": 3,
+	// "10.0.10.11": 2,
+	// "10.0.10.12": 5,
+	// "10.0.10.13": 7,
+	// "10.0.10.14": 4,
+	// "10.0.10.15": 3,
 }
 
 func ChordHash(nodeAddress string, mBits int) uint64 {
