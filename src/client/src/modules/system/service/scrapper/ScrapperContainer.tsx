@@ -11,7 +11,8 @@ import Link from 'next/link'
 import AddUrl from './add-url/AddUrl'
 import { downloadUrlService } from '@/services/url-service'
 import { useState } from 'react'
-import { SearchBar } from '@/components/ui/searchbar'
+import { Crosshair } from 'lucide-react'
+import SearchUrl from './search-url/searchUrl'
 
 type Props = {
   data: UrlDataType[]
@@ -95,7 +96,7 @@ export const ScrapperContainer = ({ data }: Props) => {
               variant="Button"
               color="green"
               sx={{
-                width: '168px',
+                minWidth: '168px',
               }}
             >
               &lt; Ir al Sistema
@@ -106,25 +107,40 @@ export const ScrapperContainer = ({ data }: Props) => {
             variant="Button"
             color="green"
             sx={{
-              width: '168px',
+              minWidth: '168px',
             }}
             onClick={() => setOpenModal('addUrl')}
           >
             + Agregar URL
           </HackerButton>
+          <HackerButton
+            fullWidth
+            variant="Button"
+            color="green"
+            sx={{
+              minWidth: '168px',
+            }}
+            icon={<Crosshair size={20} />}
+            onClick={() => setOpenModal('searchUrl')}
+          >
+            Buscar objetivo del ataque
+          </HackerButton>
+          {/* <MuiRetroHackerButton
+            icons={[<Crosshair size={20}/>]}
+            text="Buscar objetivo"
+            onClick={() => {}}
+          /> */}
         </Stack>
-        <SearchBar
-          search={''}
-          setSearch={(value) => {}}
-          placeholder="Buscar objetivo en internet"
-        />
       </Stack>
       <HackerDataGrid
         columns={columns}
-        data={data.map((item) => ({ ...item, id: item.url }))}
+        data={data
+          .filter((item) => item.url != '')
+          .map((item) => ({ ...item, id: item.url }))}
       />
       <Box height={8} />
       <AddUrl currentModal={openModal} onClose={() => setOpenModal('')} />
+      <SearchUrl currentModal={openModal} onClose={() => setOpenModal('')} />
     </Stack>
   )
 }

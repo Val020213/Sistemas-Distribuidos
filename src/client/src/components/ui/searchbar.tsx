@@ -1,14 +1,15 @@
 import { tailwindColors } from '@/theme/tailwindColors'
-import { InputBase, Stack } from '@mui/material'
+import { InputBase, Stack, SxProps, Theme } from '@mui/material'
 import { SearchCodeIcon } from 'lucide-react'
 
 type Props = {
   search: string
   setSearch: (value: string) => void
   placeholder: string
+  sx?: SxProps
 }
 
-export const SearchBar = ({ search, setSearch, placeholder }: Props) => {
+export const SearchBar = ({ search, setSearch, placeholder, sx }: Props) => {
   return (
     <Stack
       direction={'row'}
@@ -28,6 +29,7 @@ export const SearchBar = ({ search, setSearch, placeholder }: Props) => {
           borderColor: `${tailwindColors.green[500]}`,
           boxShadow: `0 0 0 2px ${tailwindColors.green[500]}`,
         },
+        ...sx,
       }}
     >
       <InputBase

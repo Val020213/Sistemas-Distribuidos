@@ -11,6 +11,7 @@ type Props = Omit<Omit<ButtonProps, 'variant'>, 'color'> & {
   color?: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'orange'
   icon?: React.ReactNode
   children: React.ReactNode
+  buttonVariant?: 'text' | 'outlined'
 }
 
 export const HackerButton: React.FC<Props> = ({
@@ -18,11 +19,12 @@ export const HackerButton: React.FC<Props> = ({
   color = 'green',
   icon,
   children,
+  buttonVariant = 'outlined',
   ...others
 }) => {
   return (
     <Button
-      variant="outlined"
+      variant={buttonVariant}
       className="group"
       {...others}
       sx={{
@@ -63,26 +65,24 @@ export const HackerButton: React.FC<Props> = ({
       />
 
       {others.disabled ? (
-        <>
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              justifyContent: 'center',
-              alignItems: 'center',
-              display: 'flex',
-              color: 'gray',
-            }}
-          >
-            <Image
-              src={disableIcon}
-              alt="disable icon"
-              width={48}
-              height={48}
-              style={{ filter: 'grayscale(1)' }}
-            />
-          </Box>
-        </>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            display: 'flex',
+            color: 'gray',
+          }}
+        >
+          <Image
+            src={disableIcon}
+            alt="disable icon"
+            width={48}
+            height={48}
+            style={{ filter: 'grayscale(1)' }}
+          />
+        </Box>
       ) : (
         <>
           {icon}
