@@ -28,6 +28,7 @@ const (
 	ChordService_DeleteData_FullMethodName     = "/chord.ChordService/DeleteData"
 	ChordService_PrintState_FullMethodName     = "/chord.ChordService/PrintState"
 	ChordService_RetrieveData_FullMethodName   = "/chord.ChordService/RetrieveData"
+	ChordService_CreateData_FullMethodName     = "/chord.ChordService/CreateData"
 )
 
 // ChordServiceClient is the client API for ChordService service.
@@ -43,6 +44,7 @@ type ChordServiceClient interface {
 	DeleteData(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Successful, error)
 	PrintState(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*State, error)
 	RetrieveData(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Data, error)
+	CreateData(ctx context.Context, in *CreateDataRequest, opts ...grpc.CallOption) (*Successful, error)
 }
 
 type chordServiceClient struct {
@@ -143,6 +145,16 @@ func (c *chordServiceClient) RetrieveData(ctx context.Context, in *Id, opts ...g
 	return out, nil
 }
 
+func (c *chordServiceClient) CreateData(ctx context.Context, in *CreateDataRequest, opts ...grpc.CallOption) (*Successful, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Successful)
+	err := c.cc.Invoke(ctx, ChordService_CreateData_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChordServiceServer is the server API for ChordService service.
 // All implementations must embed UnimplementedChordServiceServer
 // for forward compatibility.
@@ -156,6 +168,7 @@ type ChordServiceServer interface {
 	DeleteData(context.Context, *Id) (*Successful, error)
 	PrintState(context.Context, *Empty) (*State, error)
 	RetrieveData(context.Context, *Id) (*Data, error)
+	CreateData(context.Context, *CreateDataRequest) (*Successful, error)
 	mustEmbedUnimplementedChordServiceServer()
 }
 
@@ -192,6 +205,9 @@ func (UnimplementedChordServiceServer) PrintState(context.Context, *Empty) (*Sta
 }
 func (UnimplementedChordServiceServer) RetrieveData(context.Context, *Id) (*Data, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RetrieveData not implemented")
+}
+func (UnimplementedChordServiceServer) CreateData(context.Context, *CreateDataRequest) (*Successful, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateData not implemented")
 }
 func (UnimplementedChordServiceServer) mustEmbedUnimplementedChordServiceServer() {}
 func (UnimplementedChordServiceServer) testEmbeddedByValue()                      {}
@@ -376,6 +392,24 @@ func _ChordService_RetrieveData_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChordService_CreateData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordServiceServer).CreateData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChordService_CreateData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordServiceServer).CreateData(ctx, req.(*CreateDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChordService_ServiceDesc is the grpc.ServiceDesc for ChordService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -418,6 +452,10 @@ var ChordService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RetrieveData",
 			Handler:    _ChordService_RetrieveData_Handler,
+		},
+		{
+			MethodName: "CreateData",
+			Handler:    _ChordService_CreateData_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

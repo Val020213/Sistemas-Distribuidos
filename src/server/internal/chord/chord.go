@@ -86,7 +86,7 @@ func (n *RingNode) initNode(mBits int) {
 
 // http server
 
-func (n *RingNode) CallStoreData(data models.TaskType) error {
+func (n *RingNode) CallCreateData(data models.TaskType) error {
 
 	key := uint64(utils.ChordHash(data.URL, mBits))
 	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
@@ -99,13 +99,13 @@ func (n *RingNode) CallStoreData(data models.TaskType) error {
 	client, conn, err := n.GetClient(node.Address)
 
 	if err != nil {
-		return n.CallStoreData(data)
+		return n.CallCreateData(data)
 	}
 	defer conn.Close()
 
 	pbData := *ToPbData(&data)
 
-	_, err = client.StoreData(context.Background(), &pb.StoreDataRequest{Data: []*pb.Data{&pbData}})
+	_, err = client.CreateData(context.Background(), &pb.CreateDataRequest{Data: &pbData})
 
 	return err
 }
@@ -166,12 +166,16 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequ
 		n.Predecessor = &pb.Node{Id: node.Id, Address: node.Address}
 		fmt.Println("Updated predecessor to ", node.Address)
 
-		tasks := []models.TaskType{}
+		filter := utils.GetNegativeFilterBetweenRightIncusive(n.Predecessor.Id, n.Id)
+		tasks, err := n.Scraper.DB.GetTasksWithFilter(filter)
 
-		for _, cData := range tasks {
-			if !utils.BetweenRightInclusive(cData.Key, n.Predecessor.Id, n.Id) {
-				data = append(data, ToPbData(&cData))
-			}
+		if err != nil {
+			utils.RedPrint("Error communicating with database in Notify: ", err)
+			return nil, err
+		}
+
+		for _, task := range tasks {
+			data = append(data, ToPbData(&task))
 		}
 	}
 
@@ -181,8 +185,16 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequ
 func (n *RingNode) PrintState(ctx context.Context, empty *pb.Empty) (*pb.State, error) {
 
 	stateData := []*pb.Data{}
-	for key, cData := range n.Data {
-		stateData = append(stateData, ToPbData(&cData, key))
+
+	tasks, err := n.Scraper.DB.GetTasks()
+
+	if err != nil {
+		utils.RedPrint("Error communicating with database in Print State")
+		return nil, err
+	}
+
+	for _, cData := range tasks {
+		stateData = append(stateData, ToPbData(&cData))
 	}
 
 	return &pb.State{
@@ -247,6 +259,14 @@ func (n *RingNode) FindSuccessor(ctx context.Context, request *pb.FindSuccessorR
 	return closestClient.FindSuccessor(ctx, &pb.FindSuccessorRequest{Key: key, Hops: hops + 1, Visited: visited})
 }
 
+func (n *RingNode) CreateData(ctx context.Context, data *pb.CreateDataRequest) (*pb.Successful, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	n.createData(data.Data)
+	return &pb.Successful{Successful: true}, nil
+}
+
 func (n *RingNode) StoreData(ctx context.Context, data *pb.StoreDataRequest) (*pb.Successful, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -257,46 +277,27 @@ func (n *RingNode) StoreData(ctx context.Context, data *pb.StoreDataRequest) (*p
 
 func (n *RingNode) RetrieveData(ctx context.Context, key *pb.Id) (*pb.Data, error) {
 
-	if data, ok := n.Data[key.Id]; ok {
-		return ToPbData(&data, key.Id), nil
+	task, err := n.Scraper.DB.GetTask(key.Id)
+
+	if err != nil {
+		utils.RedPrint("Error retrieving data: ", err)
+		return nil, err
 	}
 
-	utils.RedPrint("Data with id ", key, " not found")
-	return nil, errors.New(fmt.Sprint("data with id ", key, " not found"))
-}
-
-func (n *RingNode) RetrieveAllData(ctx context.Context, request *pb.FindSuccessorRequest) []*pb.Data {
-
-	request.Visited[n.Id] = true
-	request.Hops += 1
-
-	retrievedData := []*pb.Data{}
-
-	for key, cData := range n.Data {
-		if utils.BetweenRightInclusive(key, request.Key, n.Id) {
-			retrievedData = append(retrievedData, ToPbData(&cData, key))
-		}
-	}
-
-	request.Key = n.Id
-	return retrievedData
+	return ToPbData(&task), nil
 }
 
 func (n *RingNode) DeleteData(ctx context.Context, deleteId *pb.Id) (*pb.Successful, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	deleteData := []uint64{}
-	for dataKey := range n.Data {
-		if utils.BetweenRightInclusive(dataKey, n.Id, deleteId.Id) {
-			deleteData = append(deleteData, dataKey)
-		}
+	err := n.Scraper.DB.DeleteData(utils.GetFilterBetweenRightIncusive(n.Id, deleteId.Id))
+
+	if err != nil {
+		utils.RedPrint("ERROR DELETING ", deleteId.Id)
+		return nil, err
 	}
 
-	fmt.Println("Deleting data: ", deleteData)
-	for _, key := range deleteData {
-		delete(n.Data, key)
-	}
 	return &pb.Successful{Successful: true}, nil
 }
 
@@ -580,22 +581,38 @@ func (n *RingNode) replicateData() {
 	fmt.Println("REPLICATE DATA: predecessor ", predecessor.Id)
 	predecessorId := predecessor.Id
 
+	if predecessorId == n.Id {
+		return
+	}
+
+	tasks, err := n.Scraper.DB.GetTasksWithFilter(utils.GetFilterBetweenRightIncusive(predecessorId, n.Id))
+
+	if err != nil {
+		utils.RedPrint("DATABASE ERROR IN REPLICATE DATA")
+		return
+	}
+
+	replicated := []*pb.Data{}
+
+	for _, task := range tasks {
+		replicated = append(replicated, ToPbData(&task))
+	}
+
 	for _, successor := range n.Successors {
-		replicated := []*pb.Data{}
-		for key, cData := range n.Data {
-			if n.Id != successor.Id && utils.Between(key, predecessorId, successor.Id) {
-				replicated = append(replicated, ToPbData(&cData, key))
+
+		if n.Id != successor.Id {
+
+			successorClient, conn, err := n.GetClient(successor.Address)
+
+			if err != nil { // handle error
+				utils.RedPrint("Error connecting to successor: ", err)
+				return
 			}
-		}
-		successorClient, conn, err := n.GetClient(successor.Address)
 
-		if err != nil { // handle error
-			utils.RedPrint("Error connecting to successor: ", err)
-			return
+			defer conn.Close()
+			successorClient.StoreData(context.Background(), &pb.StoreDataRequest{Data: replicated})
 		}
 
-		defer conn.Close()
-		successorClient.StoreData(context.Background(), &pb.StoreDataRequest{Data: replicated})
 	}
 
 	if len(n.Successors) >= tolerance {
@@ -610,14 +627,43 @@ func (n *RingNode) replicateData() {
 
 }
 
+func (n *RingNode) createData(d *pb.Data) error {
+	task := models.TaskType{
+		URL:       d.Url,
+		Key:       d.Key,
+		Status:    models.TaskStatusType(d.Status),
+		Content:   d.Content,
+		CreatedAt: d.CreatedAt.AsTime(),
+		UpdatedAt: d.UpdatedAt.AsTime(),
+	}
+
+	_, err := n.Scraper.DB.CreateTask(task)
+
+	if err != nil {
+		utils.RedPrint("ERROR ADDING ", d.Url, " TO DATABASE")
+		return err
+	}
+
+	return nil
+
+}
+
 func (n *RingNode) updateData(data []*pb.Data) {
 	for _, d := range data {
-		n.Data[d.Key] = models.TaskType{
+		task := models.TaskType{
 			URL:       d.Url,
+			Key:       d.Key,
 			Status:    models.TaskStatusType(d.Status),
 			Content:   d.Content,
 			CreatedAt: d.CreatedAt.AsTime(),
 			UpdatedAt: d.UpdatedAt.AsTime(),
+		}
+
+		err := n.Scraper.DB.UpdateTask(task)
+
+		if err != nil {
+			utils.RedPrint("DATABASE ERROR WHILE UPDATING DATA")
+			return
 		}
 	}
 }

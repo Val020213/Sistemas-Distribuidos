@@ -16,6 +16,7 @@ service ChordService {
 	rpc DeleteData(Id) returns (Successful);
 	rpc PrintState(Empty) returns (State);
 	rpc RetrieveData(Id) returns (Data);
+	rpc CreateData(CreateDataRequest) returns (Successful);
 }
 
 message Empty {
@@ -71,4 +72,8 @@ message State {
 	repeated Node finger = 4;
 	repeated Node successors = 5;
 	Node predecessor = 6;
+}
+
+message CreateDataRequest {
+	Data data = 1;
 }
