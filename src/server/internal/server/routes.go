@@ -90,7 +90,25 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	s.node.CallStoreData(task)
+
+	err := s.node.CallStoreData(task)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"statusCode": http.StatusInternalServerError,
+			"status":     "error",
+			"message":    "An error occurred while creating the task",
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"statusCode": http.StatusOK,
+		"status":     "success",
+		"message":    "Task queued",
+		"data":       task,
+	})
 
 	// // Create task in DB
 	// taskUrl, err := s.node.Scraper.DB.CreateTask(models.TaskType{
@@ -139,16 +157,30 @@ func (s *Server) getTaskByIDHandler(c *gin.Context) {
 		return
 	}
 
-	task, err := s.node.Scraper.DB.GetTask(req.URL)
+	data, err := s.node.CallGetData(req.URL)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": err})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"statusCode": http.StatusOK,
 		"status":     "success",
 		"message":    "Task fetched successfully",
-		"data":       task,
+		"data":       data,
 	})
+
+	// task, err := s.node.Scraper.DB.GetTask(req.URL)
+
+	// if err != nil {
+	// 	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+	// 	return
+	// }
+	// c.JSON(http.StatusOK, gin.H{
+	// 	"statusCode": http.StatusOK,
+	// 	"status":     "success",
+	// 	"message":    "Task fetched successfully",
+	// 	"data":       task,
+	// })
 }

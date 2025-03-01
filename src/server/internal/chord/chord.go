@@ -46,7 +46,7 @@ var (
 	grpcAddr      = os.Getenv("IP_ADDRESS")
 	grpcPort      = os.Getenv("RPC_PORT")
 	tolerance     = 3 // update this to the environment variables
-	mBits         = utils.GetEnvAsInt("CHORD_BITS", 3)
+	mBits         = utils.GetEnvAsInt("CHORD_BITS", 8)
 	multicastAddr = "224.0.0.1:9999"
 )
 
@@ -89,7 +89,7 @@ func (n *RingNode) initNode(mBits int) {
 
 func (n *RingNode) CallStoreData(data models.TaskType) error {
 
-	key := uint64(utils.GenerateUniqueHashUrl(data.URL))
+	key := uint64(utils.ChordHash(data.URL, mBits))
 	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
 
 	if err != nil {
@@ -113,7 +113,7 @@ func (n *RingNode) CallStoreData(data models.TaskType) error {
 
 func (n *RingNode) CallGetData(url string) (string, error) {
 
-	key := uint64(utils.GenerateUniqueHashUrl(url))
+	key := uint64(utils.ChordHash(url, mBits))
 	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
 
 	if err != nil {
@@ -135,6 +135,22 @@ func (n *RingNode) CallGetData(url string) (string, error) {
 	}
 
 	return data.Content, nil
+}
+
+func (n *RingNode) CallGetStatus() ([]models.TaskType, error) {
+
+	node := n.GetFirstAliveSuccessor()
+
+	client, conn, err := n.GetClient(node.Address)
+
+	if err != nil {
+		return n.CallGetStatus()
+	}
+	defer conn.Close()
+
+	client.PrintState(context.Background(), &pb.Empty{})
+
+	return nil, nil
 }
 
 // gRPC Chord Protocol
@@ -246,6 +262,23 @@ func (n *RingNode) RetrieveData(ctx context.Context, key *pb.Id) (*pb.Data, erro
 
 	utils.RedPrint("Data with id ", key, " not found")
 	return nil, errors.New(fmt.Sprint("data with id ", key, " not found"))
+}
+
+func (n *RingNode) RetrieveAllData(ctx context.Context, request *pb.FindSuccessorRequest) []*pb.Data {
+
+	request.Visited[n.Id] = true
+	request.Hops += 1
+
+	retrievedData := []*pb.Data{}
+
+	for key, cData := range n.Data {
+		if utils.BetweenRightInclusive(key, request.Key, n.Id) {
+			retrievedData = append(retrievedData, ToPbData(&cData, key))
+		}
+	}
+
+	request.Key = n.Id
+	return retrievedData
 }
 
 func (n *RingNode) DeleteData(ctx context.Context, deleteId *pb.Id) (*pb.Successful, error) {
@@ -589,6 +622,7 @@ func (n *RingNode) updateData(data []*pb.Data) {
 }
 
 // gRPC Client
+
 func (n *RingNode) GetClient(addr string) (pb.ChordServiceClient, *grpc.ClientConn, error) {
 	if addr == "" {
 		return nil, nil, errors.New("empty address")

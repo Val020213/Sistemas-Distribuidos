@@ -169,6 +169,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	respChan := make(chan *http.Response, 1)
 	errChan := make(chan error, len(targetServers))
 
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		return
+	}
+
 	for _, srv := range targetServers {
 		go func(server string) {
 			req := r.Clone(ctx)
@@ -178,6 +184,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Host:   fmt.Sprintf("%s:%d", server, 8080),
 				Path:   req.URL.Path,
 			}
+
+			req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			req.ContentLength = int64(len(bodyBytes))
 
 			resp, err := http.DefaultClient.Do(req)
 
@@ -216,12 +225,13 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	errors := make([]error, 0, len(targetServers))
 
 	// Esperar por la primera respuesta exitosa o todos los errores
+outerLoop:
 	for i := 0; i < len(targetServers); i++ {
 		select {
 		case resp := <-respChan:
 			successfulResp = resp
 			cancel() // Cancelar otras peticiones
-			break
+			break outerLoop
 		case err := <-errChan:
 			errors = append(errors, err)
 		}
