@@ -91,7 +91,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := s.node.CallStoreData(task)
+	err := s.node.CallCreateData(task)
 
 	if err != nil {
 		fmt.Println(err)
@@ -109,38 +109,6 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		"message":    "Task queued",
 		"data":       task,
 	})
-
-	// // Create task in DB
-	// taskUrl, err := s.node.Scraper.DB.CreateTask(models.TaskType{
-	// 	URL: req.URL,
-	// })
-
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"statusCode": http.StatusInternalServerError,
-	// 		"status":     "error",
-	// 		"message":    "An error occurred while creating the task",
-	// 	})
-	// 	return
-	// }
-	// select {
-	// case s.node.Scraper.TaskQueue <- taskUrl:
-	// 	c.JSON(http.StatusAccepted, gin.H{
-	// 		"statusCode": http.StatusOK,
-	// 		"status":     "success",
-	// 		"message":    "Task queued",
-	// 		"data":       taskUrl,
-	// 	})
-
-	// default:
-	// 	log.Printf("Queue full. Task ID: %v", taskUrl)
-	// 	c.JSON(http.StatusServiceUnavailable, gin.H{
-	// 		"statusCode": http.StatusServiceUnavailable,
-	// 		"status":     "error",
-	// 		"message":    "Task could not be queued",
-	// 	})
-	// }
 }
 
 func (s *Server) getTaskByIDHandler(c *gin.Context) {

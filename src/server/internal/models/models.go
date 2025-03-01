@@ -15,8 +15,8 @@ const (
 )
 
 type TaskType struct {
-	URL       string `bson:"url" json:"url"`
-	Key       uint64
+	URL       string         `bson:"url" json:"url"`
+	Key       uint64         `bson:"key" json:"key"`
 	Status    TaskStatusType `bson:"status" json:"status"`
 	Content   string         `bson:"content,omitempty" json:"content,omitempty"`
 	CreatedAt time.Time      `bson:"created_at" json:"created_at"`

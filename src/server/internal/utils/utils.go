@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func GetEnvAsInt(key string, defaultValue int) int {
@@ -69,4 +71,48 @@ func ChangePort(ip string, port string) string {
 
 func RedPrint(a ...any) (n int, err error) {
 	return fmt.Fprint(os.Stderr, "\033[31m", a, "\033[0m")
+}
+
+func GetFilterBetweenRightIncusive(a, b uint64) bson.M {
+	if a < b {
+		return bson.M{
+			"$and": []bson.M{
+				{"key": bson.M{"$gt": a}},
+				{"key": bson.M{"$lte": b}},
+			},
+		}
+	}
+	return bson.M{
+		"$or": []bson.M{
+			{"key": bson.M{"$gt": a}},
+			{"key": bson.M{"$lte": b}},
+		},
+	}
+}
+
+func GetNegativeFilterBetweenRightIncusive(a, b uint64) bson.M {
+	return bson.M{
+		"$not": GetFilterBetweenRightIncusive(a, b),
+	}
+}
+
+// if n.Id != successor.Id && utils.Between(key, predecessorId, successor.Id) {
+// 	replicated = append(replicated, ToPbData(&cData, key))
+// }
+
+func GetFilterBetween(a, b uint64) bson.M {
+	if a < b {
+		return bson.M{
+			"$and": []bson.M{
+				{"key": bson.M{"$gt": a}},
+				{"key": bson.M{"$lt": b}},
+			},
+		}
+	}
+	return bson.M{
+		"$or": []bson.M{
+			{"key": bson.M{"$gt": a}},
+			{"key": bson.M{"$lt": b}},
+		},
+	}
 }
