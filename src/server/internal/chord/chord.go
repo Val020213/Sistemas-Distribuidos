@@ -33,9 +33,9 @@ type RingNode struct {
 	Finger         []*pb.Node // Finger table entries
 	SuccessorCache []*pb.Node // Cache of verified successors
 
-	Data    map[uint64]models.TaskType // Simple key-value storage
-	m       int                        // Number of bits in the hash space
-	idSpace uint64                     // Number of nodes in the hash space
+	// Data    map[uint64]models.TaskType // Simple key-value storage
+	m       int    // Number of bits in the hash space
+	idSpace uint64 // Number of nodes in the hash space
 
 	mu sync.Mutex // Protects access to mutable fields
 
@@ -59,7 +59,6 @@ func NewNode() *RingNode {
 		Address: grpcAddr,
 		Port:    grpcPort,
 		Finger:  make([]*pb.Node, mBits),
-		Data:    make(map[uint64]models.TaskType),
 		m:       mBits,
 		idSpace: 1 << mBits,
 		Scraper: scraper,
@@ -104,7 +103,7 @@ func (n *RingNode) CallStoreData(data models.TaskType) error {
 	}
 	defer conn.Close()
 
-	pbData := *ToPbData(&data, key)
+	pbData := *ToPbData(&data)
 
 	_, err = client.StoreData(context.Background(), &pb.StoreDataRequest{Data: []*pb.Data{&pbData}})
 
@@ -167,9 +166,11 @@ func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.StoreDataRequ
 		n.Predecessor = &pb.Node{Id: node.Id, Address: node.Address}
 		fmt.Println("Updated predecessor to ", node.Address)
 
-		for key, cData := range n.Data {
-			if !utils.BetweenRightInclusive(key, n.Predecessor.Id, n.Id) {
-				data = append(data, ToPbData(&cData, key))
+		tasks := []models.TaskType{}
+
+		for _, cData := range tasks {
+			if !utils.BetweenRightInclusive(cData.Key, n.Predecessor.Id, n.Id) {
+				data = append(data, ToPbData(&cData))
 			}
 		}
 	}
@@ -698,10 +699,10 @@ func (n *RingNode) MakeNode() *pb.Node {
 	return &pb.Node{Id: n.Id, Address: n.Address}
 }
 
-func ToPbData(data *models.TaskType, key uint64) *pb.Data {
+func ToPbData(data *models.TaskType) *pb.Data {
 	return &pb.Data{
-		Key:       key,
 		Url:       data.URL,
+		Key:       data.Key,
 		Status:    string(data.Status),
 		Content:   data.Content,
 		CreatedAt: timestamppb.New(data.CreatedAt),
