@@ -698,6 +698,7 @@ func (n *RingNode) createData(d *pb.Data) error {
 }
 
 func (n *RingNode) updateData(data []*pb.Data) {
+	modelData := []models.TaskType{}
 	for _, d := range data {
 		task := models.TaskType{
 			URL:       d.Url,
@@ -708,12 +709,12 @@ func (n *RingNode) updateData(data []*pb.Data) {
 			UpdatedAt: d.UpdatedAt.AsTime(),
 		}
 
-		err := n.Scraper.DB.UpdateTask(task)
+		modelData = append(modelData, task)
+	}
 
-		if err != nil {
-			utils.RedPrint("DATABASE ERROR WHILE UPDATING DATA")
-			return
-		}
+	err := n.Scraper.DB.UpdateTasks(modelData)
+	if err != nil {
+		utils.RedPrint("ERROR UPDATING TASKS IN DATABASE: ", err)
 	}
 }
 
