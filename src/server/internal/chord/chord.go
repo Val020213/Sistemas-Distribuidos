@@ -54,6 +54,7 @@ func NewNode() *RingNode {
 
 	Id := utils.ChordHash(grpcAddr, mBits)
 	scraper := scraper.NewScraper()
+
 	return &RingNode{
 		Id:      Id,
 		Address: grpcAddr,
@@ -103,6 +104,8 @@ func (n *RingNode) CallCreateData(data models.TaskType) error {
 	defer conn.Close()
 
 	pbData := *ToPbData(&data)
+
+	n.Scraper.TaskQueue <- data.Key
 
 	_, err = client.CreateData(context.Background(), &pb.CreateDataRequest{Data: &pbData})
 

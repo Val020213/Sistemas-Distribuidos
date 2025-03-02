@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -33,9 +34,44 @@ func NewScraper() *Scraper {
 	// Start worker pool
 	for i := 0; i < numWorkers; i++ {
 		go scraper.worker()
+
 	}
 
+	go func() {
+		interval := utils.GetEnvAsInt("TASK_QUEUE_INTERVAL_SECONDS", 5)
+		ticker := time.NewTicker(time.Duration(interval) * time.Second)
+		for range ticker.C {
+			scraper.populateTaskQueue()
+		}
+	}()
+
 	return scraper
+}
+
+func (s *Scraper) populateTaskQueue() {
+
+	if len(s.TaskQueue) > 0 {
+		return
+	}
+
+	pendingTasks, err := s.DB.GetTasksWithFilter(map[string]interface{}{"status": models.StatusInProgress})
+
+	if err != nil {
+		utils.RedPrint("Error fetching pending tasks: ", err)
+		return
+	}
+
+	var wg sync.WaitGroup
+	for _, task := range pendingTasks {
+		wg.Add(1)
+		go func(taskKey uint64) {
+			defer wg.Done()
+			s.TaskQueue <- taskKey
+		}(task.Key)
+	}
+	wg.Wait()
+
+	log.Println("Task queue populated with pending tasks.")
 }
 
 func (s *Scraper) worker() {
