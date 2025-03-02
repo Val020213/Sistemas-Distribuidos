@@ -12,12 +12,17 @@ for %%i in (%*) do (
     echo Stopping container: mongo_bp%%i
     docker stop mongo_bp%%i
 
-    echo Deleting volume: mongo_volume_bp%%i
-    docker volume rm mongo_volume_bp%%i
 )
 
 echo Pruning stopped containers and unused volumes...
 docker container prune -f
+
+for %%i in (%*) do (
+   
+    echo Deleting volume: mongo_volume_bp%%i
+    docker volume rm mongo_volume_bp%%i
+)
+
 docker volume prune -f
 
 echo Done.

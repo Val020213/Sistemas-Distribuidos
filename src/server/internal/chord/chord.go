@@ -34,7 +34,7 @@ type RingNode struct {
 	SuccessorCache []*pb.Node // Cache of verified successors
 
 	// Data    map[uint64]models.TaskType // Simple key-value storage
-	m       int    // Number of bits in the hash space
+	M       int    // Number of bits in the hash space
 	idSpace uint64 // Number of nodes in the hash space
 
 	mu sync.Mutex // Protects access to mutable fields
@@ -59,7 +59,7 @@ func NewNode() *RingNode {
 		Address: grpcAddr,
 		Port:    grpcPort,
 		Finger:  make([]*pb.Node, mBits),
-		m:       mBits,
+		M:       mBits,
 		idSpace: 1 << mBits,
 		Scraper: scraper,
 
@@ -73,13 +73,13 @@ func NewNode() *RingNode {
 func (n *RingNode) StartRPCServer(grpcServer *grpc.Server) {
 	pb.RegisterChordServiceServer(grpcServer, n)
 	fmt.Println("Starting gRPC Server on ", n.Address, ":", n.Port)
-	n.initNode(n.m)
+	n.initNode()
 	n.joinNetwork()
 
 }
 
-func (n *RingNode) initNode(mBits int) {
-	for i := 0; i < mBits; i++ {
+func (n *RingNode) initNode() {
+	for i := 0; i < n.M; i++ {
 		n.Finger[i] = n.MakeNode()
 	}
 }
@@ -88,8 +88,7 @@ func (n *RingNode) initNode(mBits int) {
 
 func (n *RingNode) CallCreateData(data models.TaskType) error {
 
-	key := uint64(utils.ChordHash(data.URL, mBits))
-	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
+	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: data.Key, Hops: 0, Visited: nil})
 
 	if err != nil {
 		fmt.Println("ERROR STORING ", data.URL)
@@ -112,7 +111,7 @@ func (n *RingNode) CallCreateData(data models.TaskType) error {
 
 func (n *RingNode) CallGetData(url string) (string, error) {
 
-	key := uint64(utils.ChordHash(url, mBits))
+	key := uint64(utils.ChordHash(url, n.M))
 	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
 
 	if err != nil {
@@ -183,7 +182,7 @@ func (n *RingNode) PrintState(ctx context.Context, empty *pb.Empty) (*pb.State, 
 	}
 
 	return &pb.State{
-		Id:          utils.ChordHash(n.Address, n.m),
+		Id:          n.Id,
 		Addr:        n.Address,
 		Data:        stateData,
 		Finger:      n.Finger,
@@ -215,7 +214,7 @@ func (n *RingNode) FindSuccessor(ctx context.Context, request *pb.FindSuccessorR
 		visited = make(map[uint64]bool)
 	}
 
-	if int(hops) > n.m {
+	if int(hops) > n.M {
 		return nil, errors.New("too many hops")
 	}
 
@@ -412,7 +411,7 @@ func (n *RingNode) CheckPredecessor() *pb.Node {
 
 func (n *RingNode) ClosestPrecedingFinger(key uint64) (*pb.Node, error) {
 
-	for i := n.m - 1; i >= 0; i-- {
+	for i := n.M - 1; i >= 0; i-- {
 		if utils.BetweenRightInclusive(n.Finger[i].Id, n.Id, key) && n.IsAlive(n.Finger[i]) { // contemplando quitar el isAlive
 			return n.Finger[i], nil
 		}
@@ -531,7 +530,7 @@ func (n *RingNode) Stabilize() {
 
 func (n *RingNode) FixFingersTable() {
 	fmt.Println("FixFingerTable...")
-	for i := 0; i < n.m; i++ {
+	for i := 0; i < n.M; i++ {
 		fingerKey := (n.Id + (1 << i)) % n.idSpace
 		node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: fingerKey, Hops: 0, Visited: nil})
 		if node != nil && err == nil {
@@ -749,7 +748,7 @@ func (n *RingNode) GetBootstrapNode() (*pb.Node, error) {
 		return nil, nil
 	}
 
-	return &pb.Node{Id: utils.ChordHash(addr, n.m), Address: addr}, nil
+	return &pb.Node{Id: utils.ChordHash(addr, n.M), Address: addr}, nil
 }
 
 func (n *RingNode) Discover() (string, error) {

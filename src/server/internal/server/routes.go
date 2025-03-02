@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"server/internal/models"
+	"server/internal/utils"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -49,6 +50,7 @@ func (s *Server) healthHandler(c *gin.Context) {
 }
 
 func (s *Server) getTasksHandler(c *gin.Context) {
+	utils.GreenPrint("GET Tasks Handler")
 	tasks, err := s.node.Scraper.DB.GetTasks()
 	if err != nil {
 		fmt.Println(err)
@@ -68,6 +70,7 @@ func (s *Server) getTasksHandler(c *gin.Context) {
 }
 
 func (s *Server) createTaskHandler(c *gin.Context) {
+	utils.GreenPrint("Create Task Handler")
 	var req struct {
 		URL string `json:"url" binding:"required"`
 	}
@@ -84,6 +87,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 	// Store task in chord ring
 
 	task := models.TaskType{
+		Key:       uint64(utils.ChordHash(req.URL, s.node.M)),
 		URL:       req.URL,
 		Status:    models.StatusInProgress,
 		Content:   "",
@@ -112,6 +116,8 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 }
 
 func (s *Server) getTaskByIDHandler(c *gin.Context) {
+	utils.GreenPrint("Get Task by ID Handler")
+
 	var req struct {
 		URL string `json:"url" binding:"required"`
 	}
@@ -139,16 +145,4 @@ func (s *Server) getTaskByIDHandler(c *gin.Context) {
 		"data":       data,
 	})
 
-	// task, err := s.node.Scraper.DB.GetTask(req.URL)
-
-	// if err != nil {
-	// 	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-	// 	return
-	// }
-	// c.JSON(http.StatusOK, gin.H{
-	// 	"statusCode": http.StatusOK,
-	// 	"status":     "success",
-	// 	"message":    "Task fetched successfully",
-	// 	"data":       task,
-	// })
 }
