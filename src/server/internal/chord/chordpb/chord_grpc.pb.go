@@ -29,13 +29,14 @@ const (
 	ChordService_PrintState_FullMethodName     = "/chord.ChordService/PrintState"
 	ChordService_RetrieveData_FullMethodName   = "/chord.ChordService/RetrieveData"
 	ChordService_CreateData_FullMethodName     = "/chord.ChordService/CreateData"
+	ChordService_GetNodeData_FullMethodName    = "/chord.ChordService/GetNodeData"
 )
 
 // ChordServiceClient is the client API for ChordService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChordServiceClient interface {
-	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*StoreDataRequest, error)
+	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Successful, error)
 	Health(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HealthResponse, error)
 	FindSuccessor(ctx context.Context, in *FindSuccessorRequest, opts ...grpc.CallOption) (*Node, error)
 	GetPredecessor(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Node, error)
@@ -45,6 +46,7 @@ type ChordServiceClient interface {
 	PrintState(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*State, error)
 	RetrieveData(ctx context.Context, in *Id, opts ...grpc.CallOption) (*Data, error)
 	CreateData(ctx context.Context, in *CreateDataRequest, opts ...grpc.CallOption) (*Successful, error)
+	GetNodeData(ctx context.Context, in *GetNodeDataRequest, opts ...grpc.CallOption) (*StoreDataRequest, error)
 }
 
 type chordServiceClient struct {
@@ -55,9 +57,9 @@ func NewChordServiceClient(cc grpc.ClientConnInterface) ChordServiceClient {
 	return &chordServiceClient{cc}
 }
 
-func (c *chordServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*StoreDataRequest, error) {
+func (c *chordServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Successful, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(StoreDataRequest)
+	out := new(Successful)
 	err := c.cc.Invoke(ctx, ChordService_Notify_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -155,11 +157,21 @@ func (c *chordServiceClient) CreateData(ctx context.Context, in *CreateDataReque
 	return out, nil
 }
 
+func (c *chordServiceClient) GetNodeData(ctx context.Context, in *GetNodeDataRequest, opts ...grpc.CallOption) (*StoreDataRequest, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StoreDataRequest)
+	err := c.cc.Invoke(ctx, ChordService_GetNodeData_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChordServiceServer is the server API for ChordService service.
 // All implementations must embed UnimplementedChordServiceServer
 // for forward compatibility.
 type ChordServiceServer interface {
-	Notify(context.Context, *Node) (*StoreDataRequest, error)
+	Notify(context.Context, *Node) (*Successful, error)
 	Health(context.Context, *Empty) (*HealthResponse, error)
 	FindSuccessor(context.Context, *FindSuccessorRequest) (*Node, error)
 	GetPredecessor(context.Context, *Empty) (*Node, error)
@@ -169,6 +181,7 @@ type ChordServiceServer interface {
 	PrintState(context.Context, *Empty) (*State, error)
 	RetrieveData(context.Context, *Id) (*Data, error)
 	CreateData(context.Context, *CreateDataRequest) (*Successful, error)
+	GetNodeData(context.Context, *GetNodeDataRequest) (*StoreDataRequest, error)
 	mustEmbedUnimplementedChordServiceServer()
 }
 
@@ -179,7 +192,7 @@ type ChordServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChordServiceServer struct{}
 
-func (UnimplementedChordServiceServer) Notify(context.Context, *Node) (*StoreDataRequest, error) {
+func (UnimplementedChordServiceServer) Notify(context.Context, *Node) (*Successful, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
 }
 func (UnimplementedChordServiceServer) Health(context.Context, *Empty) (*HealthResponse, error) {
@@ -208,6 +221,9 @@ func (UnimplementedChordServiceServer) RetrieveData(context.Context, *Id) (*Data
 }
 func (UnimplementedChordServiceServer) CreateData(context.Context, *CreateDataRequest) (*Successful, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateData not implemented")
+}
+func (UnimplementedChordServiceServer) GetNodeData(context.Context, *GetNodeDataRequest) (*StoreDataRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNodeData not implemented")
 }
 func (UnimplementedChordServiceServer) mustEmbedUnimplementedChordServiceServer() {}
 func (UnimplementedChordServiceServer) testEmbeddedByValue()                      {}
@@ -410,6 +426,24 @@ func _ChordService_CreateData_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChordService_GetNodeData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNodeDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordServiceServer).GetNodeData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChordService_GetNodeData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordServiceServer).GetNodeData(ctx, req.(*GetNodeDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChordService_ServiceDesc is the grpc.ServiceDesc for ChordService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -456,6 +490,10 @@ var ChordService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateData",
 			Handler:    _ChordService_CreateData_Handler,
+		},
+		{
+			MethodName: "GetNodeData",
+			Handler:    _ChordService_GetNodeData_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

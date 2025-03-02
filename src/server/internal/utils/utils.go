@@ -73,7 +73,7 @@ func RedPrint(a ...any) (n int, err error) {
 	return fmt.Fprint(os.Stderr, "\033[31m", a, "\033[0m")
 }
 
-func GetFilterBetweenRightIncusive(a, b uint64) bson.M {
+func GetFilterBetweenRightInclusive(a, b uint64) bson.M {
 	if a < b {
 		return bson.M{
 			"$and": []bson.M{
@@ -90,9 +90,9 @@ func GetFilterBetweenRightIncusive(a, b uint64) bson.M {
 	}
 }
 
-func GetNegativeFilterBetweenRightIncusive(a, b uint64) bson.M {
+func GetNegativeFilterBetweenRightInclusive(a, b uint64) bson.M {
 	return bson.M{
-		"$not": GetFilterBetweenRightIncusive(a, b),
+		"$not": GetFilterBetweenRightInclusive(a, b),
 	}
 }
 

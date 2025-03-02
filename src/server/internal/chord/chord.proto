@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 option go_package = "./chordpb";
 
 service ChordService {
-	rpc Notify(Node) returns (StoreDataRequest);
+	rpc Notify(Node) returns (Successful);
 	rpc Health(Empty) returns (HealthResponse);
 	rpc FindSuccessor(FindSuccessorRequest) returns (Node);
 	rpc GetPredecessor(Empty) returns (Node);
@@ -17,6 +17,7 @@ service ChordService {
 	rpc PrintState(Empty) returns (State);
 	rpc RetrieveData(Id) returns (Data);
 	rpc CreateData(CreateDataRequest) returns (Successful);
+	rpc GetNodeData(GetNodeDataRequest) returns (StoreDataRequest);
 }
 
 message Empty {
@@ -76,4 +77,9 @@ message State {
 
 message CreateDataRequest {
 	Data data = 1;
+}
+
+message GetNodeDataRequest {
+	uint64 predecesorId = 1;
+	uint64 id = 2;
 }
