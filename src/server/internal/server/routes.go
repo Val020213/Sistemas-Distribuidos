@@ -50,8 +50,9 @@ func (s *Server) healthHandler(c *gin.Context) {
 }
 
 func (s *Server) getTasksHandler(c *gin.Context) {
-	utils.GreenPrint("GET Tasks Handler")
-	tasks, err := s.node.Scraper.DB.GetTasks()
+	utils.GreenPrint("GET Tasks Handler123")
+	tasks, err := s.node.CallList()
+	utils.GreenPrint("CALL LIST: ", tasks)
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{

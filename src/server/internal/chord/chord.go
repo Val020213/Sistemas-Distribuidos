@@ -153,9 +153,13 @@ func (n *RingNode) CallGetStatus() ([]models.TaskType, error) {
 
 func (n *RingNode) CallList() ([]models.TaskType, error) {
 
+	fmt.Println("**************************")
+	fmt.Println("Calling List: ", n.Address)
+
 	predecessor := n.CheckPredecessor()
 	successors := n.Successors
-	visited := make(map[uint64]bool)
+	visitedNode := make(map[uint64]bool)
+	visitedElement := make(map[uint64]bool)
 
 	tasks, err := n.Scraper.DB.GetTasksWithFilter(utils.GetFilterBetweenRightInclusive(predecessor.Id, n.Id))
 
@@ -164,13 +168,18 @@ func (n *RingNode) CallList() ([]models.TaskType, error) {
 		return nil, err
 	}
 
-	for ind := range tasks {
+	for ind, t := range tasks {
 		tasks[ind].Content = ""
+		visitedElement[t.Key] = true
 	}
 
 	for _, node := range successors {
 
-		if _, ok := visited[node.Id]; node.Address != "" && ok && node.Address != n.Address {
+		fmt.Println("VISITING SUCCESSOR: ", node.Address)
+
+		if _, ok := visitedNode[node.Id]; node.Address != "" && !ok && node.Address != n.Address {
+
+			fmt.Println("***NODE IS VALID***")
 
 			client, conn, err := n.GetClient(node.Address)
 
@@ -187,11 +196,20 @@ func (n *RingNode) CallList() ([]models.TaskType, error) {
 				return nil, err
 			}
 
+			fmt.Println("************************")
+			fmt.Println(node.Address)
+			fmt.Println("************************")
+
 			for _, task := range response.Data {
-				tasks = append(tasks, *FromPbData(task))
+
+				if _, ok := visitedNode[task.Key]; !ok {
+					tasks = append(tasks, *FromPbData(task))
+					visitedElement[task.Key] = true
+				}
+
 			}
 
-			visited[node.Id] = true
+			visitedNode[node.Id] = true
 			successors = append(successors, response.Successors...)
 		}
 
