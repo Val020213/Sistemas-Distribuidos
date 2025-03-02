@@ -759,7 +759,7 @@ func (n *RingNode) replicateData() {
 			return
 		}
 		defer conn.Close()
-		lastSuccessorClient.DeleteData(context.Background(), &pb.Id{Id: predecessorId})
+		lastSuccessorClient.DeleteData(context.Background(), &pb.Id{Id: n.Id})
 	}
 
 }
