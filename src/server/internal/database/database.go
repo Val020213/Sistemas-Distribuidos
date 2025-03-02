@@ -117,7 +117,17 @@ func (s *service) CreateTask(task models.TaskType) (string, error) {
 	return task.URL, nil
 }
 
+//[ERROR UPDATING TASKS IN DATABASE:  must provide at least one element in input slice]
+// [ERROR UPDATING TASKS IN DATABASE:  must provide at least one element in input slice]
+// [Error Getting Node data from old successor  100  error: rpc error: code = Unimplemented desc = method GetNodeData not implemented]
+// [Error Getting Node data from old successor  100  error: rpc error: code = Unimplemented desc = method GetNodeData not implemented]
+
 func (s *service) UpdateTasks(tasks []models.TaskType) error {
+
+	if len(tasks) <= 0 {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

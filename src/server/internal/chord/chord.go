@@ -333,10 +333,10 @@ func (n *RingNode) DeleteData(ctx context.Context, deleteId *pb.Id) (*pb.Success
 	return &pb.Successful{Successful: true}, nil
 }
 
-func (n *RingNode) GetRangeNodeData(ctx context.Context, request *pb.GetNodeDataRequest) (*pb.StoreDataRequest, error) {
+func (n *RingNode) GetNodeData(ctx context.Context, request *pb.GetNodeDataRequest) (*pb.StoreDataRequest, error) {
 	data, err := n.Scraper.DB.GetTasksWithFilter(utils.GetFilterBetweenRightInclusive(request.PredecesorId, request.Id))
 	if err != nil {
-		utils.RedPrint("GetRangeNodeData Error", err)
+		utils.RedPrint("GetNodeData Error", err)
 		return &pb.StoreDataRequest{}, err
 	}
 	var pbData []*pb.Data
@@ -501,8 +501,8 @@ func (n *RingNode) FindNewSuccessor(candidate, oldSuccessor *pb.Node) (*pb.Node,
 			return oldSuccessor, nil
 		}
 
-		defer conn.Close()
 		newCandidate, err := succClient.GetPredecessor(context.Background(), &pb.Empty{})
+		conn.Close()
 
 		if err != nil {
 			utils.RedPrint("FindNewSuccessor: Error getting predecessor: ", err)
@@ -517,28 +517,32 @@ func (n *RingNode) FindNewSuccessor(candidate, oldSuccessor *pb.Node) (*pb.Node,
 
 func (n *RingNode) GetNodeDataFromOldSuccessor() {
 	utils.YellowPrint("GET NODE DATA FROM OLD SUCCESSORS")
-	if n.Predecessor != nil {
-		if len(n.Successors) > 0 {
-			for _, succ := range n.Successors[:len(n.Successors)-1] {
-				utils.YellowPrint("FROM SUCCESSOR: ", succ.Address)
-				succClient, conn, err := n.GetClient(succ.Address)
+	if n.Predecessor != nil && len(n.Successors) > 0 {
 
-				if err != nil {
-					utils.RedPrint("Error Getting Node data from old successor ", n.Id, " error:", err)
-					continue
-				}
-
-				defer conn.Close()
-
-				data, err := succClient.GetNodeData(context.Background(), &pb.GetNodeDataRequest{Id: n.Id, PredecesorId: n.Predecessor.Id})
-
-				if err != nil {
-					utils.RedPrint("Error Getting Node data from old successor ", n.Id, " error:", err)
-					continue
-				}
-
-				n.updateData(data.Data)
+		for _, succ := range n.Successors[:len(n.Successors)-1] {
+			if succ.Address == "" || succ.Id == n.Id {
+				continue
 			}
+
+			utils.YellowPrint("FROM SUCCESSOR: ", succ.Address)
+			succClient, conn, err := n.GetClient(succ.Address)
+
+			if err != nil {
+				utils.RedPrint("GET NODE DATA FROM OLD SUCCESSOR, Connection error ", n.Address, " error:", err)
+				continue
+			}
+
+			data, err := succClient.GetNodeData(context.Background(), &pb.GetNodeDataRequest{PredecesorId: n.Predecessor.Id, Id: n.Id})
+
+			conn.Close()
+
+			if err != nil {
+				utils.RedPrint("Get NODE DATA FROM OLD SUCCESSOR, call error :", succ.Address, " error:", err)
+				continue
+			}
+
+			n.updateData(data.Data)
+
 		}
 	}
 }
