@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"server/internal/models"
+	"server/internal/utils"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -48,6 +49,14 @@ func New() Service {
 
 	// Create Collections here
 	client.Database(database).CreateCollection(context.Background(), "tasks")
+
+	collection := client.Database(database).Collection("tasks")
+
+	// 1. Crear índice único si no existe (solo una vez)
+	collection.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+		Keys:    bson.D{{Key: "key", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
 
 	return &service{
 		db: client,
@@ -128,15 +137,10 @@ func (s *service) UpdateTasks(tasks []models.TaskType) error {
 
 	collection := s.db.Database(database).Collection("tasks")
 
-	// 1. Crear índice único si no existe (solo una vez)
-	collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{Key: "key", Value: 1}},
-		Options: options.Index().SetUnique(true),
-	})
-
 	// 2. Preparar operaciones bulk optimizadas
 	var operations []mongo.WriteModel
 	for _, task := range tasks {
+		utils.YellowPrint("\n    TASK ID: ", task.Key)
 		filter := bson.M{
 			"key": task.Key,
 			"$or": []bson.M{
@@ -208,7 +212,12 @@ func (s *service) UpdateTask(task models.TaskType) error {
 	}
 
 	opts := options.Update().SetUpsert(true)
+
+	utils.GreenPrint("************************")
+	utils.GreenPrint(task.Key, "\n")
+
 	_, err := collection.UpdateOne(ctx, filter, update, opts)
+	utils.GreenPrint(task.Key, " ", err)
 	return err
 }
 

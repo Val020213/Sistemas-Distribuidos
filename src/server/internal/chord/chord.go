@@ -783,8 +783,6 @@ func (n *RingNode) createData(d *pb.Data) error {
 }
 
 func (n *RingNode) updateData(data []*pb.Data) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 
 	modelData := []models.TaskType{}
 	for _, d := range data {
@@ -792,6 +790,9 @@ func (n *RingNode) updateData(data []*pb.Data) {
 
 		modelData = append(modelData, task)
 	}
+
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	err := n.Scraper.DB.UpdateTasks(modelData)
 	if err != nil {
