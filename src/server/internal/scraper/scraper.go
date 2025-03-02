@@ -18,7 +18,7 @@ import (
 
 type Scraper struct {
 	DB        database.Service
-	TaskQueue chan string
+	TaskQueue chan uint64
 }
 
 func NewScraper() *Scraper {
@@ -27,7 +27,7 @@ func NewScraper() *Scraper {
 
 	scraper := &Scraper{
 		DB:        database.New(),
-		TaskQueue: make(chan string, queueSize),
+		TaskQueue: make(chan uint64, queueSize),
 	}
 
 	// Start worker pool
@@ -45,11 +45,11 @@ func (s *Scraper) worker() {
 		}
 	}()
 
-	for taskUrl := range s.TaskQueue {
+	for taskID := range s.TaskQueue {
 
-		task, err := s.DB.GetTask(taskUrl)
+		task, err := s.DB.GetTask(taskID)
 		if err != nil {
-			log.Printf("Error fetching task %s: %v", taskUrl, err)
+			log.Printf("Error fetching task %v: %v", taskID, err)
 			continue
 		}
 
@@ -61,10 +61,11 @@ func (s *Scraper) worker() {
 		} else {
 			task.Status = models.StatusComplete
 			task.Content = content
+			task.UpdatedAt = time.Now()
 		}
 
 		if err := s.DB.UpdateTask(task); err != nil {
-			log.Printf("Error updating task %s: %v", taskUrl, err)
+			log.Printf("Error updating task with id %v: %v", taskID, err)
 		}
 	}
 }

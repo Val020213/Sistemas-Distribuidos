@@ -1,7 +1,7 @@
 'use server'
 import { UrlDataType } from '@/app/types/url_data_type'
 import { backendRoutes, tagsRoutes } from '@/routes/routes'
-import { HackerApiResponse } from '@/types/api'
+import { GoogleApiSearchResponse, HackerApiResponse } from '@/types/api'
 
 export async function fetchUrlService(
   url: string
@@ -13,6 +13,7 @@ export async function fetchUrlService(
       tags: [tagsRoutes.fetch],
     },
   })
+  console.log('AGUA', response)
   return response.json()
 }
 
@@ -40,5 +41,25 @@ export async function downloadUrlService(
       tags: [tagsRoutes.download],
     },
   })
+  console.log('AGUA', response)
+  return response.json()
+}
+
+export async function webSearchApi(
+  search: string
+): Promise<GoogleApiSearchResponse> {
+  const apiKey = process.env.NEXT_GOOGLE_API_KEY
+
+  if (!apiKey) {
+    throw new Error('Missing Google API Key')
+  }
+  
+  const response = await fetch(
+    `${backendRoutes.search}?key=${apiKey}&cx=a5e01a1aa147a40fc&q=${encodeURIComponent(search)}`
+  )
+  console.log(response)
+  if (!response.ok) {
+    throw new Error(`Error: ${response.statusText}`)
+  }
   return response.json()
 }

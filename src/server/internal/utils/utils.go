@@ -3,9 +3,13 @@ package utils
 import (
 	"crypto/sha1"
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 	"os"
 	"strconv"
+	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func GetEnvAsInt(key string, defaultValue int) int {
@@ -23,7 +27,19 @@ func GenerateUniqueHashUrl(url string) uint32 {
 	return hasher.Sum32()
 }
 
+var hardCodeHashes = map[string]uint64{
+	// "10.0.10.11": 2,
+	// "10.0.10.12": 5,
+	// "10.0.10.13": 7,
+	// "10.0.10.14": 4,
+	// "10.0.10.15": 3,
+}
+
 func ChordHash(nodeAddress string, mBits int) uint64 {
+	if id, ok := hardCodeHashes[nodeAddress]; ok {
+		return id
+	}
+
 	hash := sha1.Sum([]byte(nodeAddress))
 	hashBytes := hash[:8]
 	id := binary.BigEndian.Uint64(hashBytes)
@@ -31,10 +47,76 @@ func ChordHash(nodeAddress string, mBits int) uint64 {
 	return id & mask
 }
 
-func Between(x, a, b uint64) bool {
-	return (a < x && x < b) || (b < x && x < a)
+func BetweenRightInclusive(x, a, b uint64) bool { // use this instead of Between
+	if a < b {
+		return a < x && x <= b
+	}
+	return a < x || x <= b
 }
 
-func BetweenRightInclusive(x, a, b uint64) bool {
-	return (a < x && x <= b) || (b < x && x <= a)
+func Between(x, a, b uint64) bool {
+	if a < b {
+		return a < x && x < b
+	}
+	return a < x || x < b
+}
+
+func IpAddress(addrWithPort string) string {
+	return strings.Split(addrWithPort, ":")[0]
+}
+
+func ChangePort(ip string, port string) string {
+	return IpAddress(ip) + ":" + port
+}
+
+func RedPrint(a ...any) (n int, err error) {
+	return fmt.Fprint(os.Stderr, "\033[31m", a, "\033[0m")
+}
+
+func GreenPrint(a ...any) (n int, err error) {
+	return fmt.Fprint(os.Stdout, "\033[32m", a, "\033[0m")
+}
+
+func YellowPrint(a ...any) (n int, err error) {
+	return fmt.Fprint(os.Stdout, "\033[33m", a, "\033[0m")
+}
+
+func GetFilterBetweenRightInclusive(a, b uint64) bson.M {
+	if a < b {
+		return bson.M{
+			"$and": []bson.M{
+				{"key": bson.M{"$gt": a}},
+				{"key": bson.M{"$lte": b}},
+			},
+		}
+	}
+	return bson.M{
+		"$or": []bson.M{
+			{"key": bson.M{"$gt": a}},
+			{"key": bson.M{"$lte": b}},
+		},
+	}
+}
+
+func GetNegativeFilterBetweenRightInclusive(a, b uint64) bson.M {
+	return bson.M{
+		"$not": GetFilterBetweenRightInclusive(a, b),
+	}
+}
+
+func GetFilterBetween(a, b uint64) bson.M {
+	if a < b {
+		return bson.M{
+			"$and": []bson.M{
+				{"key": bson.M{"$gt": a}},
+				{"key": bson.M{"$lt": b}},
+			},
+		}
+	}
+	return bson.M{
+		"$or": []bson.M{
+			{"key": bson.M{"$gt": a}},
+			{"key": bson.M{"$lt": b}},
+		},
+	}
 }

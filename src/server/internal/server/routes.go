@@ -2,9 +2,10 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"server/internal/models"
+	"server/internal/utils"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -49,6 +50,7 @@ func (s *Server) healthHandler(c *gin.Context) {
 }
 
 func (s *Server) getTasksHandler(c *gin.Context) {
+	utils.GreenPrint("GET Tasks Handler")
 	tasks, err := s.node.Scraper.DB.GetTasks()
 	if err != nil {
 		fmt.Println(err)
@@ -68,6 +70,7 @@ func (s *Server) getTasksHandler(c *gin.Context) {
 }
 
 func (s *Server) createTaskHandler(c *gin.Context) {
+	utils.GreenPrint("Create Task Handler")
 	var req struct {
 		URL string `json:"url" binding:"required"`
 	}
@@ -81,10 +84,18 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// Create task in DB
-	taskUrl, err := s.node.Scraper.DB.CreateTask(models.TaskType{
-		URL: req.URL,
-	})
+	// Store task in chord ring
+
+	task := models.TaskType{
+		Key:       uint64(utils.ChordHash(req.URL, s.node.M)),
+		URL:       req.URL,
+		Status:    models.StatusInProgress,
+		Content:   "",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	err := s.node.CallCreateData(task)
 
 	if err != nil {
 		fmt.Println(err)
@@ -95,26 +106,18 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		})
 		return
 	}
-	select {
-	case s.node.Scraper.TaskQueue <- taskUrl:
-		c.JSON(http.StatusAccepted, gin.H{
-			"statusCode": http.StatusOK,
-			"status":     "success",
-			"message":    "Task queued",
-			"data":       taskUrl,
-		})
 
-	default:
-		log.Printf("Queue full. Task ID: %v", taskUrl)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"statusCode": http.StatusServiceUnavailable,
-			"status":     "error",
-			"message":    "Task could not be queued",
-		})
-	}
+	c.JSON(http.StatusAccepted, gin.H{
+		"statusCode": http.StatusOK,
+		"status":     "success",
+		"message":    "Task queued",
+		"data":       task,
+	})
 }
 
 func (s *Server) getTaskByIDHandler(c *gin.Context) {
+	utils.GreenPrint("Get Task by ID Handler")
+
 	var req struct {
 		URL string `json:"url" binding:"required"`
 	}
@@ -128,16 +131,18 @@ func (s *Server) getTaskByIDHandler(c *gin.Context) {
 		return
 	}
 
-	task, err := s.node.Scraper.DB.GetTask(req.URL)
+	data, err := s.node.CallGetData(req.URL)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": err})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"statusCode": http.StatusOK,
 		"status":     "success",
 		"message":    "Task fetched successfully",
-		"data":       task,
+		"data":       data,
 	})
+
 }

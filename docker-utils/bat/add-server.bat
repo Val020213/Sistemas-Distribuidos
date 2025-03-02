@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 cd ./src || exit 1
 
 :: Set the number of new instances you want to create
-set INSTANCES=1
+set INSTANCES=5
 
 :: Check if scrapper-backend-image:latest exists; if not, build it
 for /f "delims=" %%a in ('docker images -q scrapper-backend-image:latest 2^>nul') do (

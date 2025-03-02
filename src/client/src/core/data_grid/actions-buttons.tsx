@@ -6,9 +6,14 @@ import { FileDown } from 'lucide-react'
 interface Props {
   disabled?: boolean
   onDownload?: () => void
+  buttonsVariant?: 'text' | 'outlined'
 }
 
-const ActionsButtons = ({ disabled, onDownload }: Props) => {
+const ActionsButtons = ({
+  disabled,
+  onDownload,
+  buttonsVariant = 'outlined',
+}: Props) => {
   return (
     <Box
       sx={{
@@ -31,6 +36,7 @@ const ActionsButtons = ({ disabled, onDownload }: Props) => {
           <HackerButton
             disabled={disabled}
             variant="Button"
+            buttonVariant={buttonsVariant}
             sx={{
               width: '40px !important',
               height: '40px !important',

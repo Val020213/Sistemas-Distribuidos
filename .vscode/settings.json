@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
-        "bson"
+        "bson",
+        "succ"
     ],
     "postman.settings.dotenv-detection-notification-visibility": false
 }
