@@ -422,6 +422,7 @@ func (n *RingNode) ClosestPrecedingFinger(key uint64) (*pb.Node, error) {
 }
 
 func (n *RingNode) FindNewSuccessor(candidate, oldSuccessor *pb.Node) (*pb.Node, error) {
+
 	if candidate.Address != "" && n.Id != candidate.Id && utils.Between(candidate.Id, n.Id, oldSuccessor.Id) {
 		succClient, conn, err := n.GetClient(candidate.Address)
 
@@ -438,19 +439,18 @@ func (n *RingNode) FindNewSuccessor(candidate, oldSuccessor *pb.Node) (*pb.Node,
 			return oldSuccessor, nil
 		}
 
-		if newCandidate.Address != "" {
-			return n.FindNewSuccessor(newCandidate, candidate)
-		}
+		return n.FindNewSuccessor(newCandidate, candidate)
 
 	}
 	return oldSuccessor, nil
 }
 
 func (n *RingNode) GetNodeDataFromOldSuccessor() {
-
+	utils.YellowPrint("GET NODE DATA FROM OLD SUCCESSORS")
 	if n.Predecessor != nil {
 		if len(n.Successors) > 0 {
 			for _, succ := range n.Successors[:len(n.Successors)-1] {
+				utils.YellowPrint("FROM SUCCESSOR: ", succ.Address)
 				succClient, conn, err := n.GetClient(succ.Address)
 
 				if err != nil {

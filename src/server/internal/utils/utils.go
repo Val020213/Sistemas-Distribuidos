@@ -73,6 +73,14 @@ func RedPrint(a ...any) (n int, err error) {
 	return fmt.Fprint(os.Stderr, "\033[31m", a, "\033[0m")
 }
 
+func GreenPrint(a ...any) (n int, err error) {
+	return fmt.Fprint(os.Stdout, "\033[32m", a, "\033[0m")
+}
+
+func YellowPrint(a ...any) (n int, err error) {
+	return fmt.Fprint(os.Stdout, "\033[33m", a, "\033[0m")
+}
+
 func GetFilterBetweenRightInclusive(a, b uint64) bson.M {
 	if a < b {
 		return bson.M{
@@ -95,10 +103,6 @@ func GetNegativeFilterBetweenRightInclusive(a, b uint64) bson.M {
 		"$not": GetFilterBetweenRightInclusive(a, b),
 	}
 }
-
-// if n.Id != successor.Id && utils.Between(key, predecessorId, successor.Id) {
-// 	replicated = append(replicated, ToPbData(&cData, key))
-// }
 
 func GetFilterBetween(a, b uint64) bson.M {
 	if a < b {
