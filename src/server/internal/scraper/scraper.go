@@ -106,7 +106,7 @@ func (s *Scraper) worker() {
 	}
 }
 
-func scrapeURL(url string) (string, error) {
+func scrapeURL(url string) ([]byte, error) {
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
@@ -116,18 +116,18 @@ func scrapeURL(url string) (string, error) {
 
 	resp, err := client.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to scrape URL: %s, status code: %d", url, resp.StatusCode)
+		return nil, fmt.Errorf("failed to scrape URL: %s, status code: %d", url, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(body), nil
+	return body, nil
 }

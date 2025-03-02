@@ -57,7 +57,7 @@ message Data {
 	uint64 key = 1;
 	string url = 2;
 	string status = 3;
-	string content = 4;
+	bytes content = 4;
 	google.protobuf.Timestamp created_at = 5;
 	google.protobuf.Timestamp updated_at = 6;
 

@@ -91,7 +91,7 @@ func (s *Server) createTaskHandler(c *gin.Context) {
 		Key:       uint64(utils.ChordHash(req.URL, s.node.M)),
 		URL:       req.URL,
 		Status:    models.StatusInProgress,
-		Content:   "",
+		Content:   nil,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}

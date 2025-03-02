@@ -112,14 +112,14 @@ func (n *RingNode) CallCreateData(data models.TaskType) error {
 	return err
 }
 
-func (n *RingNode) CallGetData(url string) (string, error) {
+func (n *RingNode) CallGetData(url string) ([]byte, error) {
 
 	key := uint64(utils.ChordHash(url, n.M))
 	node, err := n.FindSuccessor(context.Background(), &pb.FindSuccessorRequest{Key: key, Hops: 0, Visited: nil})
 
 	if err != nil {
 		fmt.Println("ERROR RETRIEVING ", url)
-		return "", err
+		return nil, err
 	}
 
 	client, conn, err := n.GetClient(node.Address)
@@ -132,7 +132,7 @@ func (n *RingNode) CallGetData(url string) (string, error) {
 	data, err := client.RetrieveData(context.Background(), &pb.Id{Id: key})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return data.Content, nil
@@ -172,7 +172,7 @@ func (n *RingNode) CallList() ([]models.TaskType, error) {
 	}
 
 	for ind, t := range tasks {
-		tasks[ind].Content = ""
+		tasks[ind].Content = nil
 		visitedElement[t.Key] = true
 	}
 
@@ -381,7 +381,7 @@ func (n *RingNode) List(ctx context.Context, empty *pb.Empty) (*pb.ListResponse,
 	var pbData []*pb.Data
 
 	for _, task := range data {
-		task.Content = ""
+		task.Content = nil
 		pbData = append(pbData, ToPbData(&task))
 	}
 
@@ -768,14 +768,8 @@ func (n *RingNode) replicateData() {
 }
 
 func (n *RingNode) createData(d *pb.Data) error {
-	task := models.TaskType{
-		URL:       d.Url,
-		Key:       d.Key,
-		Status:    models.TaskStatusType(d.Status),
-		Content:   d.Content,
-		CreatedAt: d.CreatedAt.AsTime(),
-		UpdatedAt: d.UpdatedAt.AsTime(),
-	}
+
+	task := *FromPbData(d)
 
 	_, err := n.Scraper.DB.CreateTask(task)
 
@@ -794,14 +788,7 @@ func (n *RingNode) updateData(data []*pb.Data) {
 
 	modelData := []models.TaskType{}
 	for _, d := range data {
-		task := models.TaskType{
-			URL:       d.Url,
-			Key:       d.Key,
-			Status:    models.TaskStatusType(d.Status),
-			Content:   d.Content,
-			CreatedAt: d.CreatedAt.AsTime(),
-			UpdatedAt: d.UpdatedAt.AsTime(),
-		}
+		task := *FromPbData(d)
 
 		modelData = append(modelData, task)
 	}
