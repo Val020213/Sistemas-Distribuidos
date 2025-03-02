@@ -253,8 +253,6 @@ func (n *RingNode) CreateData(ctx context.Context, data *pb.CreateDataRequest) (
 }
 
 func (n *RingNode) StoreData(ctx context.Context, data *pb.StoreDataRequest) (*pb.Successful, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 
 	n.updateData(data.Data)
 	return &pb.Successful{Successful: true}, nil
@@ -698,6 +696,9 @@ func (n *RingNode) createData(d *pb.Data) error {
 }
 
 func (n *RingNode) updateData(data []*pb.Data) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	modelData := []models.TaskType{}
 	for _, d := range data {
 		task := models.TaskType{
