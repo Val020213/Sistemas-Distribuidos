@@ -18,6 +18,7 @@ service ChordService {
 	rpc RetrieveData(Id) returns (Data);
 	rpc CreateData(CreateDataRequest) returns (Successful);
 	rpc GetNodeData(GetNodeDataRequest) returns (StoreDataRequest);
+	rpc List(Empty) returns (ListResponse);
 }
 
 message Empty {
@@ -82,4 +83,9 @@ message CreateDataRequest {
 message GetNodeDataRequest {
 	uint64 predecesorId = 1;
 	uint64 id = 2;
+}
+
+message ListResponse {
+	repeated Node successors = 1;
+	repeated Data data = 2;
 }

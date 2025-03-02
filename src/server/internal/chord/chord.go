@@ -151,6 +151,56 @@ func (n *RingNode) CallGetStatus() ([]models.TaskType, error) {
 	return nil, nil
 }
 
+func (n *RingNode) CallList() ([]models.TaskType, error) {
+
+	predecessor := n.CheckPredecessor()
+	successors := n.Successors
+	visited := make(map[uint64]bool)
+
+	tasks, err := n.Scraper.DB.GetTasksWithFilter(utils.GetFilterBetweenRightInclusive(predecessor.Id, n.Id))
+
+	if err != nil {
+		utils.RedPrint("ERROR CALLING LIST IN FIRST NODE ", n.Address)
+		return nil, err
+	}
+
+	for ind := range tasks {
+		tasks[ind].Content = ""
+	}
+
+	for _, node := range successors {
+
+		if _, ok := visited[node.Id]; node.Address != "" && ok && node.Address != n.Address {
+
+			client, conn, err := n.GetClient(node.Address)
+
+			if err != nil {
+				utils.RedPrint("ERROR CALLING LIST IN NODE :", node.Address)
+				continue
+			}
+			defer conn.Close()
+
+			response, err := client.List(context.Background(), &pb.Empty{})
+
+			if err != nil {
+				utils.RedPrint("ERROR WHILE LISTING ON NODE ", node.Address, ": ", err)
+				return nil, err
+			}
+
+			for _, task := range response.Data {
+				tasks = append(tasks, *FromPbData(task))
+			}
+
+			visited[node.Id] = true
+			successors = append(successors, response.Successors...)
+		}
+
+	}
+
+	return tasks, nil
+
+}
+
 // gRPC Chord Protocol
 
 func (n *RingNode) Notify(ctx context.Context, node *pb.Node) (*pb.Successful, error) {
@@ -294,6 +344,27 @@ func (n *RingNode) GetRangeNodeData(ctx context.Context, request *pb.GetNodeData
 		pbData = append(pbData, ToPbData(&task))
 	}
 	return &pb.StoreDataRequest{Data: pbData}, nil
+}
+
+func (n *RingNode) List(ctx context.Context, empty *pb.Empty) (*pb.ListResponse, error) {
+
+	predecessor := n.CheckPredecessor()
+
+	data, err := n.Scraper.DB.GetTasksWithFilter(utils.GetFilterBetweenRightInclusive(predecessor.Id, n.Id))
+
+	if err != nil {
+		utils.RedPrint("DATABASE ERROR IN LIST ", err)
+		return nil, err
+	}
+
+	var pbData []*pb.Data
+
+	for _, task := range data {
+		task.Content = ""
+		pbData = append(pbData, ToPbData(&task))
+	}
+
+	return &pb.ListResponse{Successors: n.Successors, Data: pbData}, nil
 }
 
 // Chord Utils
@@ -619,8 +690,6 @@ func (n *RingNode) IsAlive(remoteNode *pb.Node) bool {
 	return true
 }
 
-// data management
-
 func (n *RingNode) replicateData() {
 	fmt.Println("Replicating data...")
 	predecessor := n.CheckPredecessor()
@@ -803,5 +872,16 @@ func ToPbData(data *models.TaskType) *pb.Data {
 		Content:   data.Content,
 		CreatedAt: timestamppb.New(data.CreatedAt),
 		UpdatedAt: timestamppb.New(data.UpdatedAt),
+	}
+}
+
+func FromPbData(data *pb.Data) *models.TaskType {
+	return &models.TaskType{
+		URL:       data.Url,
+		Key:       data.Key,
+		Status:    models.TaskStatusType(data.Status),
+		Content:   data.Content,
+		CreatedAt: data.CreatedAt.AsTime(),
+		UpdatedAt: data.UpdatedAt.AsTime(),
 	}
 }
