@@ -12,8 +12,8 @@ for i in "$@"; do
     echo "Stopping container: mongo_bp${i}"
     docker stop "mongo_bp${i}"
     
-    echo "Deleting volume: mongo_bp${i}"
-    docker volume rm "mongo_bp${i}"
+    echo "Deleting volume: mongo_volume_bp${i}"
+    docker volume rm "mongo_volume_bp${i}"
 done
 
 echo "Pruning stopped containers and unused volumes..."
