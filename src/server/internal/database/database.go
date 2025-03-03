@@ -177,6 +177,16 @@ func (s *service) UpdateTasks(tasks []models.TaskType) error {
 	// 3. Ejecutar bulk optimizado
 	opts := options.BulkWrite().SetOrdered(false)
 	_, err := collection.BulkWrite(ctx, operations, opts)
+
+	// Manejar error de clave duplicada (código 11000)
+	if err != nil {
+		if mongoErr, ok := err.(mongo.WriteException); ok {
+			if mongoErr.WriteErrors[0].Code == 11000 {
+				err = nil
+			}
+		}
+	}
+
 	return err
 }
 
@@ -217,7 +227,16 @@ func (s *service) UpdateTask(task models.TaskType) error {
 	utils.GreenPrint(task.Key, "\n")
 
 	_, err := collection.UpdateOne(ctx, filter, update, opts)
-	utils.GreenPrint(task.Key, " ", err)
+
+	// Manejar error de clave duplicada (código 11000)
+	if err != nil {
+		if mongoErr, ok := err.(mongo.WriteException); ok {
+			if mongoErr.WriteErrors[0].Code == 11000 {
+				err = nil
+			}
+		}
+	}
+
 	return err
 }
 
