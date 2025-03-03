@@ -56,14 +56,16 @@ for /L %%i in (%START_INSTANCE%,1,%END_INSTANCE%) do (
         -v "%cd%\client":/app ^
         -v /app/node_modules ^
         -v /app/.next ^
+        -v "%cd%\certs":/app/certs ^
         --network scrapper-client-network ^
         --ip 10.0.11.1%%i ^
         --cap-add NET_ADMIN ^
         --privileged ^
         --env-file "%cd%\client\.env" ^
-        -e NEXT_PUBLIC_API_URL=http://10.0.10.254:8080 ^
+        -e NEXT_PUBLIC_API_URL=http://10.0.11.254:8080 ^
         scrapper-client-image:latest
 )
 
 echo Todas las nuevas instancias han sido creadas.
 pause
+
