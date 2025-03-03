@@ -7,6 +7,7 @@ import (
 	"os"
 	"server/internal/models"
 	"server/internal/utils"
+	"strings"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -178,13 +179,9 @@ func (s *service) UpdateTasks(tasks []models.TaskType) error {
 	opts := options.BulkWrite().SetOrdered(false)
 	_, err := collection.BulkWrite(ctx, operations, opts)
 
-	// Manejar error de clave duplicada (código 11000)
-	if err != nil {
-		if mongoErr, ok := err.(mongo.WriteException); ok {
-			if mongoErr.WriteErrors[0].Code == 11000 {
-				err = nil
-			}
-		}
+	// Clave duplicada por nil
+	if err != nil && strings.Split(err.Error(), " ")[0] == "bulk" {
+		return nil
 	}
 
 	return err
@@ -223,18 +220,10 @@ func (s *service) UpdateTask(task models.TaskType) error {
 
 	opts := options.Update().SetUpsert(true)
 
-	utils.GreenPrint("************************")
-	utils.GreenPrint(task.Key, "\n")
-
 	_, err := collection.UpdateOne(ctx, filter, update, opts)
 
-	// Manejar error de clave duplicada (código 11000)
-	if err != nil {
-		if mongoErr, ok := err.(mongo.WriteException); ok {
-			if mongoErr.WriteErrors[0].Code == 11000 {
-				err = nil
-			}
-		}
+	if err != nil && strings.Split(err.Error(), " ")[0] == "E11000" {
+		return nil
 	}
 
 	return err
