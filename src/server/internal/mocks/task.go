@@ -11,7 +11,7 @@ var Tasks = []models.TaskType{
 
 		URL:       "https://www.google.com",
 		Status:    models.StatusInProgress,
-		Content:   "",
+		Content:   nil,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	},
@@ -19,14 +19,14 @@ var Tasks = []models.TaskType{
 
 		URL:       "https://www.facebook.com",
 		Status:    models.StatusInProgress,
-		Content:   "",
+		Content:   nil,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	},
 	{
 		URL:       "https://www.twitter.com",
 		Status:    models.StatusInProgress,
-		Content:   "",
+		Content:   nil,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	},
@@ -34,7 +34,7 @@ var Tasks = []models.TaskType{
 
 		URL:       "https://www.linkedin.com",
 		Status:    models.StatusInProgress,
-		Content:   "",
+		Content:   nil,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	},

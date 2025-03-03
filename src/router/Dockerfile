@@ -12,7 +12,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY . .
+# COPY . .
 
 RUN apk add --no-cache iptables && chmod +x /app/route.sh
 

@@ -15,10 +15,10 @@ const (
 )
 
 type TaskType struct {
-	// ID        uint32         `bson:"_id" json:"id"`
 	URL       string         `bson:"url" json:"url"`
+	Key       uint64         `bson:"key" json:"key"`
 	Status    TaskStatusType `bson:"status" json:"status"`
-	Content   string         `bson:"content,omitempty" json:"content,omitempty"`
+	Content   []byte         `bson:"content,omitempty" json:"content,omitempty"`
 	CreatedAt time.Time      `bson:"created_at" json:"created_at"`
 	UpdatedAt time.Time      `bson:"updated_at" json:"updated_at"`
 }

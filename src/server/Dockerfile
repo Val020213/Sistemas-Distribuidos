@@ -12,7 +12,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY . .
+# COPY . .
 
 RUN chmod +x /app/server.sh
 

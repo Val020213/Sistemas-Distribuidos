@@ -2,27 +2,90 @@ syntax = "proto3";
 
 package chord;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "./chordpb";
 
 service ChordService {
-	rpc Notify(NotifyRequest) returns (NotifyResponse);
+	rpc Notify(Node) returns (Successful);
 	rpc Health(Empty) returns (HealthResponse);
+	rpc FindSuccessor(FindSuccessorRequest) returns (Node);
+	rpc GetPredecessor(Empty) returns (Node);
+	rpc GetSuccessors(Empty) returns (GetSuccessorsResponse);
+	rpc StoreData(StoreDataRequest) returns (Successful);
+	rpc DeleteData(Id) returns (Successful);
+	rpc PrintState(Empty) returns (State);
+	rpc RetrieveData(Id) returns (Data);
+	rpc CreateData(CreateDataRequest) returns (Successful);
+	rpc GetNodeData(GetNodeDataRequest) returns (StoreDataRequest);
+	rpc List(Empty) returns (ListResponse);
 }
 
-message Empty{
+message Empty {
 
 }
 
-message NotifyRequest {
+message Node{
 	uint64 id = 1;
 	string address = 2;
 }
 
-message NotifyResponse {
-	bool updated = 1;
+message FindSuccessorRequest{
+	uint64 key = 1;
+	int32 hops = 2;
+	map<uint64, bool> visited = 3;
+}
+
+message GetSuccessorsResponse{
+	repeated Node successors = 1;
+}
+
+message Successful {
+	bool successful = 1;
 }
 
 message HealthResponse {
 	uint64 id = 1;
 	string address = 2;
+}
+
+message StoreDataRequest {
+	repeated Data data = 1;
+}
+
+message Data {
+	uint64 key = 1;
+	string url = 2;
+	string status = 3;
+	bytes content = 4;
+	google.protobuf.Timestamp created_at = 5;
+	google.protobuf.Timestamp updated_at = 6;
+
+}
+
+message Id {
+	uint64 id = 1;
+}
+
+message State {
+	uint64 id = 1;
+	string addr = 2;
+	repeated Data data = 3;
+	repeated Node finger = 4;
+	repeated Node successors = 5;
+	Node predecessor = 6;
+}
+
+message CreateDataRequest {
+	Data data = 1;
+}
+
+message GetNodeDataRequest {
+	uint64 predecesorId = 1;
+	uint64 id = 2;
+}
+
+message ListResponse {
+	repeated Node successors = 1;
+	repeated Data data = 2;
 }
