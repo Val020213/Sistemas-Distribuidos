@@ -176,7 +176,9 @@ func (n *RingNode) CallList() ([]models.TaskType, error) {
 		visitedElement[t.Key] = true
 	}
 
-	for _, node := range successors {
+	for i := 0; i < len(successors); i++ {
+
+		node := successors[i]
 
 		fmt.Println("VISITING SUCCESSOR: ", node.Address)
 
@@ -205,7 +207,7 @@ func (n *RingNode) CallList() ([]models.TaskType, error) {
 
 			for _, task := range response.Data {
 
-				if _, ok := visitedNode[task.Key]; !ok {
+				if _, ok := visitedElement[task.Key]; !ok {
 					tasks = append(tasks, *FromPbData(task))
 					visitedElement[task.Key] = true
 				}
