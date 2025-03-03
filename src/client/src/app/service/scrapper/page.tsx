@@ -15,5 +15,5 @@ export default async function Page() {
     throw new Error('No data received from server')
   }
 
-  return <ScrapperContainer data={response.data} />
+  return <ScrapperContainer data={response.data ?? []} />
 }

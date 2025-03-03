@@ -59,9 +59,11 @@ func (s *Server) getTasksHandler(c *gin.Context) {
 			"statusCode": http.StatusInternalServerError,
 			"status":     "error",
 			"message":    "An error occurred while fetching tasks",
+			"data":       []models.TaskType{},
 		})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"statusCode": http.StatusOK,
 		"status":     "success",
