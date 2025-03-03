@@ -29,6 +29,7 @@ const ResultCard = ({
       <Typography
         component={'a'}
         href={result.link}
+        target="_blank"
         color={`${tailwindColors.green[300]}`}
       >
         {result.link}

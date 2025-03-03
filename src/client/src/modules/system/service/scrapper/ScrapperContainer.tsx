@@ -26,7 +26,7 @@ export const ScrapperContainer = ({ data }: Props) => {
 
     if (response.data) {
       const url = window.URL.createObjectURL(
-        new Blob([response.data.content ?? ''])
+        new Blob([response.data ?? ''])
       )
       const link = document.createElement('a')
       link.href = url

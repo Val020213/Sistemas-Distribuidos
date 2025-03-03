@@ -13,27 +13,24 @@ export async function fetchUrlService(
       tags: [tagsRoutes.fetch],
     },
   })
-  console.log('AGUA', response)
   return response.json()
 }
 
 export async function listUrlService(): Promise<
   HackerApiResponse<UrlDataType[]>
 > {
-  console.log('listUrlService - Request to address:', backendRoutes.list)
   const response = await fetch(`${backendRoutes.list}`, {
     method: 'GET',
     next: {
       tags: [tagsRoutes.list],
     },
   })
-  console.log('listUrlService - Response:', response)
   return response.json()
 }
 
 export async function downloadUrlService(
   url: string
-): Promise<HackerApiResponse<UrlDataType>> {
+): Promise<HackerApiResponse<string>> {
   const response = await fetch(backendRoutes.download, {
     method: 'POST',
     body: JSON.stringify({ url: url }),
@@ -41,7 +38,6 @@ export async function downloadUrlService(
       tags: [tagsRoutes.download],
     },
   })
-  console.log('AGUA', response)
   return response.json()
 }
 
@@ -53,13 +49,16 @@ export async function webSearchApi(
   if (!apiKey) {
     throw new Error('Missing Google API Key')
   }
-  
+
   const response = await fetch(
-    `${backendRoutes.search}?key=${apiKey}&cx=a5e01a1aa147a40fc&q=${encodeURIComponent(search)}`
+    `${
+      backendRoutes.search
+    }?key=${apiKey}&cx=a5e01a1aa147a40fc&q=${encodeURIComponent(search)}`
   )
-  console.log(response)
+
   if (!response.ok) {
     throw new Error(`Error: ${response.statusText}`)
   }
+
   return response.json()
 }

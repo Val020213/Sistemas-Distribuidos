@@ -14,7 +14,7 @@ const SearchUrl = ({
       open={currentModal === 'searchUrl'}
       onClose={onClose}
     >
-      <SearchUrlFormContainer onClose={onClose}></SearchUrlFormContainer>
+      <SearchUrlFormContainer onClose={onClose} />
     </HackerDialog>
   )
 }

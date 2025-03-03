@@ -143,7 +143,7 @@ func (s *Server) getTaskByIDHandler(c *gin.Context) {
 		"statusCode": http.StatusOK,
 		"status":     "success",
 		"message":    "Task fetched successfully",
-		"data":       data,
+		"data":       string(data),
 	})
 
 }

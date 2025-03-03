@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"server/internal/models"
-	"server/internal/utils"
 	"strings"
 	"time"
 
@@ -141,7 +140,7 @@ func (s *service) UpdateTasks(tasks []models.TaskType) error {
 	// 2. Preparar operaciones bulk optimizadas
 	var operations []mongo.WriteModel
 	for _, task := range tasks {
-		utils.YellowPrint("\n    TASK ID: ", task.Key)
+		// utils.YellowPrint("\n    TASK ID: ", task.Key)
 		filter := bson.M{
 			"key": task.Key,
 			"$or": []bson.M{
