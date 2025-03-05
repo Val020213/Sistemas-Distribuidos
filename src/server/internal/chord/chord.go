@@ -2,6 +2,8 @@ package chord
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -12,7 +14,7 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "server/internal/chord/chordpb"
@@ -39,6 +41,10 @@ type RingNode struct {
 
 	mu sync.Mutex // Protects access to mutable fields
 
+	// Security
+	Cert   tls.Certificate
+	CaCert []byte
+
 	pb.UnimplementedChordServiceServer
 }
 
@@ -50,7 +56,7 @@ var (
 	multicastAddr = "224.0.0.1:9999"
 )
 
-func NewNode() *RingNode {
+func NewNode(cert tls.Certificate, caCert []byte) *RingNode {
 
 	Id := utils.ChordHash(grpcAddr, mBits)
 	scraper := scraper.NewScraper()
@@ -68,6 +74,9 @@ func NewNode() *RingNode {
 		Predecessor:    nil,
 		SuccessorCache: []*pb.Node{},
 		mu:             sync.Mutex{},
+
+		Cert:   cert,
+		CaCert: caCert,
 	}
 }
 
@@ -808,7 +817,24 @@ func (n *RingNode) GetClient(addr string) (pb.ChordServiceClient, *grpc.ClientCo
 	if addr == "" {
 		return nil, nil, errors.New("empty address")
 	}
-	conn, err := grpc.NewClient(utils.ChangePort(addr, grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(n.CaCert)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{n.Cert},
+		RootCAs:      caCertPool,
+		//los servidores tienen nombres dinámicos (ej: IPs)
+		InsecureSkipVerify: true,
+	}
+
+	creds := credentials.NewTLS(tlsConfig)
+
+	conn, err := grpc.NewClient(
+		utils.ChangePort(addr, grpcPort),
+		grpc.WithTransportCredentials(creds), // ⬅️ Usar credenciales seguras
+	)
+
 	if err != nil {
 		utils.RedPrint("GetClient: Error connecting to node: ", err)
 		return nil, nil, err

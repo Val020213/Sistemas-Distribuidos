@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -15,6 +18,7 @@ import (
 	"server/internal/server"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func gracefulShutdown(apiServer *http.Server, grpcServer *grpc.Server, done chan bool) {
@@ -39,8 +43,29 @@ func gracefulShutdown(apiServer *http.Server, grpcServer *grpc.Server, done chan
 
 func main() {
 
-	node := chord.NewNode()
-	grpcServer := grpc.NewServer()
+	cert, err := tls.LoadX509KeyPair("./certs/server.crt", "./certs/server.key")
+	if err != nil {
+		fmt.Println("failed to load key pair: ", err)
+	}
+
+	caCert, err := os.ReadFile("./certs/ca.crt")
+
+	if err != nil {
+		fmt.Println("failed to load CA certificate: ", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	creds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert, // ⬅️ Exige mTLS
+		ClientCAs:    caCertPool,
+	})
+
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
+
+	node := chord.NewNode(cert, caCert)
 	node.StartRPCServer(grpcServer)
 
 	httpServer := server.NewServer(node)
@@ -64,7 +89,7 @@ func main() {
 
 	go multicast.MulticastAnnouncer()
 
-	err := httpServer.ListenAndServe()
+	err = httpServer.ListenAndServeTLS("", "")
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}
