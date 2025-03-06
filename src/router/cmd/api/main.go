@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -25,11 +28,46 @@ const (
 
 // serversMu protects the map of discovered servers.
 var (
-	serversMu sync.Mutex
-	servers   = make(map[string]*models.DiscoveredServer)
+	serversMu       sync.Mutex
+	servers         = make(map[string]*models.DiscoveredServer)
+	routerCert      tls.Certificate
+	caCertPool      *x509.CertPool
+	tlsConfigServer *tls.Config
+	tlsConfigClient *tls.Config
 )
 
+func init() {
+	var err error
+	routerCert, err = tls.LoadX509KeyPair("./certs/router.crt", "./certs/router.key")
+	if err != nil {
+		log.Fatalf("Error cargando certificado del router: %v", err)
+	}
+
+	caCert, err := os.ReadFile("./certs/ca.crt")
+	if err != nil {
+		log.Fatalf("Error leyendo CA: %v", err)
+	}
+	caCertPool = x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfigServer = &tls.Config{
+		Certificates: []tls.Certificate{routerCert},
+		ClientAuth:   tls.NoClientCert, // ⬅️ Exige certificado del cliente
+		ClientCAs:    caCertPool,
+		MinVersion:   tls.VersionTLS12, // Usa TLS 1.2 o superior
+	}
+
+	tlsConfigClient = &tls.Config{
+		Certificates:       []tls.Certificate{routerCert},
+		RootCAs:            caCertPool,
+		InsecureSkipVerify: true, // Disable certificate verification
+		// No se usa ClientAuth aquí porque el router actúa como cliente
+	}
+}
+
 func main() {
+
+	// init() is automatically called by the Go runtime
 
 	// Create a context that cancels on SIGINT or SIGTERM.
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -39,17 +77,18 @@ func main() {
 	var wg sync.WaitGroup
 
 	srv := &http.Server{
-		Addr:    ":8080", // Puerto para recibir requests del front
-		Handler: http.HandlerFunc(ServeHTTP),
+		Addr:      ":8080", // Puerto para recibir requests del front
+		Handler:   http.HandlerFunc(ServeHTTP),
+		TLSConfig: tlsConfigServer,
 	}
 
 	// Start the HTTP server in a separate goroutine.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Println("HTTP server listening on :8080")
+		log.Println("HTTPS server listening on :8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server error: %v", err)
+			log.Fatalf("HTTPS server error: %v", err)
 		}
 	}()
 
@@ -150,6 +189,13 @@ func filterServer() ([]string, error) {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfigClient,
+		},
+	}
+
 	candidates, _ := filterServer()
 	fmt.Print("Handle request from client addr", r.RemoteAddr, " to ", r.URL.Path, "\n")
 
@@ -180,7 +226,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			req := r.Clone(ctx)
 			req.RequestURI = ""
 			req.URL = &url.URL{
-				Scheme: "http",
+				Scheme: "https",
 				Host:   fmt.Sprintf("%s:%d", server, 8080),
 				Path:   req.URL.Path,
 			}
@@ -188,7 +234,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			req.ContentLength = int64(len(bodyBytes))
 
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := httpClient.Do(req)
 
 			if err != nil {
 				errChan <- err
@@ -202,6 +248,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				errChan <- err
 				return
 			}
+			// fmt.Println("RESPONSE", resp.Body)
+			fmt.Println("RESPONSE", resp.Body)
 
 			if resp.StatusCode < 500 {
 				// Clonar la respuesta

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --experimental-https --experimental-https-key ./certs/client.key --experimental-https-cert ./certs/client.crt --experimental-https-ca ./certs/ca.crt",
     "start": "next start",
     "next:lint": "next lint",
     "build": "next build",

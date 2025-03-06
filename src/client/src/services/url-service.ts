@@ -9,6 +9,9 @@ export async function fetchUrlService(
   const response = await fetch(`${backendRoutes.fetch}`, {
     method: 'POST',
     body: JSON.stringify({ url: url }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
     next: {
       tags: [tagsRoutes.fetch],
     },
@@ -21,10 +24,15 @@ export async function listUrlService(): Promise<
 > {
   const response = await fetch(`${backendRoutes.list}`, {
     method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     next: {
       tags: [tagsRoutes.list],
     },
   })
+
+  console.log('response', response)
   return response.json()
 }
 
@@ -34,6 +42,9 @@ export async function downloadUrlService(
   const response = await fetch(backendRoutes.download, {
     method: 'POST',
     body: JSON.stringify({ url: url }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
     next: {
       tags: [tagsRoutes.download],
     },
